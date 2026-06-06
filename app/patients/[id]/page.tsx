@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import NoteTemplateSelector from "@/app/components/NoteTemplateSelector";
 
 export default async function PatientPage({
   params,
@@ -642,43 +643,7 @@ PLAN:`;
             </div>
 
             <form action={createNote} className="mb-6 rounded-2xl bg-[#071A2F] p-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm text-slate-400">
-                    Título
-                  </label>
-                  <input
-                    name="title"
-                    defaultValue={`Evolución ${today}`}
-                    placeholder="Evolución 06/06/2026"
-                    className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-slate-400">
-                    Tipo
-                  </label>
-                  <input
-                    value="Progress Note"
-                    readOnly
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-300 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="mb-2 block text-sm text-slate-400">
-                  Contenido
-                </label>
-                <textarea
-                  name="content"
-                  rows={14}
-                  defaultValue={plantillaMI}
-                  placeholder="Paciente al pase de visita..."
-                  className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
-                />
-              </div>
+              <NoteTemplateSelector today={today} defaultTemplate={plantillaMI} />
 
               <button
                 type="submit"
