@@ -173,6 +173,7 @@ export default async function Home() {
   const highPriorityCount = patientSummaries.filter((item) => item.priority === "Alta").length;
   const stableCount = patientSummaries.filter((item) => item.priority === "Estable").length;
   const noLabsCount = patientSummaries.filter((item) => !item.lab).length;
+  const criticalPendingCount = criticalCount;
 
   const criticalAlerts = patientSummaries
     .filter((item) => item.priority === "Crítico")
@@ -238,32 +239,8 @@ export default async function Home() {
               </button>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl bg-[#071A2F] p-4">
-                <p className="text-sm text-slate-400">Pacientes activos</p>
-                <p className="mt-2 text-3xl font-bold">{list.length}</p>
-              </div>
-
-              <div className="rounded-2xl bg-[#071A2F] p-4">
-                <p className="text-sm text-slate-400">Críticos</p>
-                <p className="mt-2 text-3xl font-bold text-red-400">
-                  {criticalCount}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-[#071A2F] p-4">
-                <p className="text-sm text-slate-400">Prioritarios</p>
-                <p className="mt-2 text-3xl font-bold text-orange-300">
-                  {highPriorityCount}
-                </p>
-              </div>
-
-              <div className="rounded-2xl bg-[#071A2F] p-4">
-                <p className="text-sm text-slate-400">Estables</p>
-                <p className="mt-2 text-3xl font-bold text-green-300">
-                  {stableCount}
-                </p>
-              </div>
+            <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-300">
+              <span className="font-semibold text-white">{list.length}</span> pacientes activos · Lista priorizada por últimos laboratorios
             </div>
           </section>
 
@@ -317,6 +294,16 @@ export default async function Home() {
               ) : (
                 <p className="text-sm text-slate-400">Sin alertas críticas al momento.</p>
               )}
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-[#071A2F] p-4">
+              <h4 className="mb-3 font-semibold text-cyan-300">📋 Pendientes del servicio</h4>
+
+              <div className="space-y-2 text-sm text-slate-300">
+                <p>• {noLabsCount} paciente(s) sin laboratorios capturados</p>
+                <p>• {criticalPendingCount} paciente(s) en estado crítico</p>
+                <p>• Revisar evolución médica y plan del día</p>
+              </div>
             </div>
           </section>
 
