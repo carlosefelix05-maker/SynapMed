@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -314,12 +315,21 @@ export default async function Home() {
                 </p>
               </div>
 
-              <a
-                href={nextPatientForRounds ? `/patients/${nextPatientForRounds}` : "#"}
-                className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
-              >
-                Iniciar Pase
-              </a>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  href="/patients/new"
+                  className="rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-300"
+                >
+                  + Nuevo paciente
+                </Link>
+
+                <a
+                  href={nextPatientForRounds ? `/patients/${nextPatientForRounds}` : "#"}
+                  className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
+                >
+                  Iniciar Pase
+                </a>
+              </div>
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-300">
