@@ -30,6 +30,13 @@ export default async function PatientPage({
     .limit(1)
     .single();
 
+  const { data: labHistory } = await supabase
+    .from("labs")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
   const { data: allPatients } = await supabase
     .from("patients")
     .select("id, full_name, bed")
@@ -55,24 +62,59 @@ export default async function PatientPage({
     revalidatePath(`/patients/${id}`);
   }
 
+  async function deleteNote(formData: FormData) {
+    "use server";
+
+    const noteId = String(formData.get("noteId") ?? "").trim();
+
+    if (!noteId) {
+      return;
+    }
+
+    await supabase
+      .from("notes")
+      .delete()
+      .eq("id", noteId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
   async function createLabs(formData: FormData) {
     "use server";
 
-    await supabase.from("labs").insert({
+    const newLabs = {
       patient_id: id,
-      glu: String(formData.get("glu") ?? "").trim(),
-      cr: String(formData.get("cr") ?? "").trim(),
-      na: String(formData.get("na") ?? "").trim(),
-      k: String(formData.get("k") ?? "").trim(),
-      hb: String(formData.get("hb") ?? "").trim(),
-      leu: String(formData.get("leu") ?? "").trim(),
-      pct: String(formData.get("pct") ?? "").trim(),
-      bnp: String(formData.get("bnp") ?? "").trim(),
-      pcr: String(formData.get("pcr") ?? "").trim(),
-      otros: String(formData.get("otros") ?? "").trim(),
-    });
+      glu: String(formData.get("glu") ?? "").trim() || null,
+      cr: String(formData.get("cr") ?? "").trim() || null,
+      na: String(formData.get("na") ?? "").trim() || null,
+      k: String(formData.get("k") ?? "").trim() || null,
+      hb: String(formData.get("hb") ?? "").trim() || null,
+      leu: String(formData.get("leu") ?? "").trim() || null,
+      pct: String(formData.get("pct") ?? "").trim() || null,
+      bnp: String(formData.get("bnp") ?? "").trim() || null,
+      pcr: String(formData.get("pcr") ?? "").trim() || null,
+      otros: String(formData.get("otros") ?? "").trim() || null,
+    };
+
+    const hasAnyLab = Object.entries(newLabs).some(
+      ([key, value]) => key !== "patient_id" && value !== null
+    );
+
+    if (!hasAnyLab) {
+      return;
+    }
+
+    const { error } = await supabase.from("labs").insert(newLabs);
+
+    if (error) {
+      console.error("Error al guardar laboratorios:", error.message);
+      return;
+    }
 
     revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
+    redirect(`/patients/${id}`);
   }
 
   async function completeRound() {
@@ -122,6 +164,43 @@ export default async function PatientPage({
   ]
     .filter(Boolean)
     .join(", ");
+
+  const recentLabs = [...(labHistory ?? [])].reverse();
+
+  function labValue(lab: any, key: string) {
+    const raw = lab?.[key];
+    if (raw === null || raw === undefined || raw === "") return null;
+    return String(raw);
+  }
+
+  function trendText(key: string, label: string) {
+    const values = recentLabs
+      .map((lab) => labValue(lab, key))
+      .filter(Boolean) as string[];
+
+    if (values.length === 0) return `${label}: Pendiente`;
+    if (values.length === 1) return `${label}: ${values[0]}`;
+
+    const first = Number(values[0]);
+    const last = Number(values[values.length - 1]);
+    const arrow =
+      !Number.isNaN(first) && !Number.isNaN(last)
+        ? last > first
+          ? " ↑"
+          : last < first
+            ? " ↓"
+            : " →"
+        : "";
+
+    return `${label}: ${values.join(" → ")}${arrow}`;
+  }
+
+  function labDate(lab: any) {
+    return new Date(lab.created_at).toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+  }
 
   const synapsePriority =
     latestLabs?.cr && Number(latestLabs.cr) >= 2
@@ -418,22 +497,53 @@ PLAN:`;
           </section>
 
           <section className="rounded-3xl bg-white/10 p-6">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-              Labs relevantes
-            </h2>
-
-            <div className="mb-5 grid grid-cols-2 gap-2 text-slate-300 md:grid-cols-3">
-              <div className="rounded-xl bg-[#071A2F] p-3">Glu: {latestLabs?.glu || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">Cr: {latestLabs?.cr || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">Na: {latestLabs?.na || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">K: {latestLabs?.k || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">Hb: {latestLabs?.hb || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">Leu: {latestLabs?.leu || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">PCT: {latestLabs?.pct || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">BNP: {latestLabs?.bnp || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">PCR: {latestLabs?.pcr || "Pendiente"}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3 md:col-span-3">Otros: {latestLabs?.otros || "Pendiente"}</div>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-cyan-300">
+                  📈 Tendencias de laboratorio
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Últimos {recentLabs.length} registro(s) capturados
+                </p>
+              </div>
             </div>
+
+            <div className="mb-5 grid grid-cols-1 gap-2 text-slate-300 md:grid-cols-2">
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("cr", "Cr")}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("hb", "Hb")}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("leu", "Leu")}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("na", "Na")}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("k", "K")}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("glu", "Glu")}</div>
+            </div>
+
+            {recentLabs.length > 0 ? (
+              <div className="mb-5 overflow-hidden rounded-2xl border border-white/10">
+                <div className="grid grid-cols-7 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-300">
+                  <span>Fecha</span>
+                  <span>Cr</span>
+                  <span>Hb</span>
+                  <span>Leu</span>
+                  <span>Na</span>
+                  <span>K</span>
+                  <span>Glu</span>
+                </div>
+
+                {[...(labHistory ?? [])].map((lab) => (
+                  <div key={lab.id} className="grid grid-cols-7 border-t border-white/10 px-3 py-2 text-xs text-slate-300">
+                    <span>{labDate(lab)}</span>
+                    <span>{lab.cr || "-"}</span>
+                    <span>{lab.hb || "-"}</span>
+                    <span>{lab.leu || "-"}</span>
+                    <span>{lab.na || "-"}</span>
+                    <span>{lab.k || "-"}</span>
+                    <span>{lab.glu || "-"}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mb-5 text-sm text-slate-400">Sin laboratorios capturados.</p>
+            )}
 
             <form action={createLabs} className="rounded-2xl bg-[#071A2F] p-4">
               <p className="mb-3 font-semibold text-cyan-300">Capturar laboratorios</p>
@@ -563,18 +673,54 @@ PLAN:`}
               </p>
             </div>
 
-            {notes && notes.length > 0 ? (
-              <div className="space-y-4">
-                {notes.map((note) => (
-                  <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
-                    <p className="font-bold">{note.title}</p>
-                    <p className="mt-2 whitespace-pre-wrap text-slate-300">{note.content}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-400">Sin notas clínicas registradas.</p>
-            )}
+           {notes && notes.length > 0 ? (
+  <div className="space-y-4">
+    {notes.map((note) => (
+      <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="font-bold">{note.title || "Nota médica"}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              {note.type || "Nota médica"}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={`/patients/${id}/notes/${note.id}`}
+              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
+            >
+              Ver
+            </Link>
+
+            <Link
+              href={`/patients/${id}/notes/${note.id}/edit`}
+              className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              Editar
+            </Link>
+
+            <form action={deleteNote}>
+              <input type="hidden" name="noteId" value={note.id} />
+              <button
+                type="submit"
+                className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+              >
+                Eliminar
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-slate-300">
+          {note.content || "Sin contenido."}
+        </p>
+      </div>
+    ))}
+  </div>
+) : (
+  <p className="text-slate-400">Sin notas clínicas registradas.</p>
+)}
           </section>
         </div>
       </div>
