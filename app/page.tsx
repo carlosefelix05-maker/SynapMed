@@ -71,6 +71,35 @@ export default async function Home() {
       .join(" · ") || "Sin labs";
   }
 
+  function labAlertClass(lab?: Lab) {
+    if (!lab) return "text-slate-300";
+
+    const cr = Number(lab.cr);
+    const hb = Number(lab.hb);
+    const leu = Number(lab.leu);
+    const pct = Number(lab.pct);
+
+    if (
+      (!Number.isNaN(cr) && cr >= 2) ||
+      (!Number.isNaN(hb) && hb <= 8) ||
+      (!Number.isNaN(leu) && leu >= 15) ||
+      (!Number.isNaN(pct) && pct >= 2)
+    ) {
+      return "text-red-400 font-semibold";
+    }
+
+    if (
+      (!Number.isNaN(cr) && cr >= 1.5) ||
+      (!Number.isNaN(hb) && hb <= 10) ||
+      (!Number.isNaN(leu) && leu >= 12) ||
+      (!Number.isNaN(pct) && pct >= 0.5)
+    ) {
+      return "text-amber-300 font-medium";
+    }
+
+    return "text-green-300";
+  }
+
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
@@ -182,7 +211,7 @@ export default async function Home() {
                   </span>
                   <span className="text-slate-300">{patient.diagnosis}</span>
                   <span>{patient.priority}</span>
-                  <span className="text-slate-300">
+                  <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
                     {formatLabs(latestLabsByPatient.get(patient.id))}
                   </span>
                 </a>
