@@ -129,6 +129,52 @@ export default async function PatientPage({
     labsResumen || "pendientes de captura"
   }.`;
 
+  const synapseProblems = (patient.diagnosis ?? "")
+    .split("/")
+    .map((problem: string) => problem.trim())
+    .filter(Boolean);
+
+  const synapseAlerts = [
+    latestLabs?.cr && Number(latestLabs.cr) >= 2
+      ? `Cr ${latestLabs.cr}: alerta renal`
+      : null,
+    latestLabs?.hb && Number(latestLabs.hb) <= 8
+      ? `Hb ${latestLabs.hb}: anemia severa`
+      : null,
+    latestLabs?.k && Number(latestLabs.k) >= 5.5
+      ? `K ${latestLabs.k}: hiperkalemia`
+      : null,
+    latestLabs?.na && Number(latestLabs.na) <= 130
+      ? `Na ${latestLabs.na}: hiponatremia`
+      : null,
+    latestLabs?.leu && Number(latestLabs.leu) >= 15
+      ? `Leu ${latestLabs.leu}: leucocitosis significativa`
+      : null,
+    latestLabs?.pct && Number(latestLabs.pct) >= 2
+      ? `PCT ${latestLabs.pct}: probable proceso infeccioso significativo`
+      : null,
+    latestLabs?.bnp && Number(latestLabs.bnp) >= 500
+      ? `BNP ${latestLabs.bnp}: sobrecarga/estrés cardiaco probable`
+      : null,
+  ].filter(Boolean) as string[];
+
+  const synapsePendings = [
+    !latestLabs ? "Capturar laboratorios actuales" : null,
+    latestLabs?.cr && Number(latestLabs.cr) >= 2
+      ? "Vigilar función renal, balance hídrico y nefrotóxicos"
+      : null,
+    latestLabs?.hb && Number(latestLabs.hb) <= 8
+      ? "Revalorar anemia, sangrado activo y necesidad transfusional"
+      : null,
+    latestLabs?.k && Number(latestLabs.k) >= 5.5
+      ? "Revisar manejo de potasio y electrocardiograma"
+      : null,
+    latestLabs?.pct && Number(latestLabs.pct) >= 2
+      ? "Revalorar foco infeccioso, cultivos y antibiótico"
+      : null,
+    "Actualizar evolución y plan del día",
+  ].filter(Boolean) as string[];
+
   const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
 
 EXPLORACIÓN FÍSICA:
@@ -251,20 +297,60 @@ PLAN:`;
         </section>
 
         <section className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-cyan-300">🧠 Synapse</h2>
               <p className="text-sm text-slate-400">
-                Resumen clínico automático
+                Integración clínica automática
               </p>
             </div>
 
             <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-              v1 clínica
+              v2 clínica
             </span>
           </div>
 
-          <p className="leading-7 text-slate-200">{synapseSummary}</p>
+          <p className="mb-5 leading-7 text-slate-200">{synapseSummary}</p>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-2xl bg-[#071A2F] p-4">
+              <h3 className="mb-3 font-semibold text-cyan-300">Problemas activos</h3>
+
+              {synapseProblems.length > 0 ? (
+                <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-300">
+                  {synapseProblems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-sm text-slate-400">Sin problemas registrados.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl bg-[#071A2F] p-4">
+              <h3 className="mb-3 font-semibold text-red-300">Alertas</h3>
+
+              {synapseAlerts.length > 0 ? (
+                <ul className="space-y-2 text-sm text-red-300">
+                  {synapseAlerts.map((alert) => (
+                    <li key={alert}>• {alert}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-400">Sin alertas críticas automáticas.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl bg-[#071A2F] p-4">
+              <h3 className="mb-3 font-semibold text-amber-300">Pendientes sugeridos</h3>
+
+              <ul className="space-y-2 text-sm text-slate-300">
+                {synapsePendings.map((pending) => (
+                  <li key={pending}>• {pending}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
