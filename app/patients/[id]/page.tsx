@@ -63,6 +63,7 @@ export default async function PatientPage({
       pct: String(formData.get("pct") ?? "").trim(),
       bnp: String(formData.get("bnp") ?? "").trim(),
       pcr: String(formData.get("pcr") ?? "").trim(),
+      otros: String(formData.get("otros") ?? "").trim(),
     });
 
     revalidatePath(`/patients/${id}`);
@@ -186,6 +187,7 @@ PLAN:`;
               <div className="rounded-xl bg-[#071A2F] p-3">PCT: {latestLabs?.pct || "Pendiente"}</div>
               <div className="rounded-xl bg-[#071A2F] p-3">BNP: {latestLabs?.bnp || "Pendiente"}</div>
               <div className="rounded-xl bg-[#071A2F] p-3">PCR: {latestLabs?.pcr || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3 md:col-span-3">Otros: {latestLabs?.otros || "Pendiente"}</div>
             </div>
 
             <form action={createLabs} className="rounded-2xl bg-[#071A2F] p-4">
@@ -201,6 +203,7 @@ PLAN:`;
                 <input name="pct" placeholder="PCT" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
                 <input name="bnp" placeholder="BNP" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
                 <input name="pcr" placeholder="PCR" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <textarea name="otros" placeholder="Otros parámetros: TROP 125, DD 3200, INR 1.3..." rows={3} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500 md:col-span-3" />
               </div>
 
               <button type="submit" className="mt-4 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950">
