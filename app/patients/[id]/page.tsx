@@ -83,18 +83,43 @@ export default async function PatientPage({
   async function createLabs(formData: FormData) {
     "use server";
 
+    const rawLabs = String(formData.get("rawLabs") ?? "").trim();
+
+    function extractLab(patterns: RegExp[]) {
+      for (const pattern of patterns) {
+        const match = rawLabs.match(pattern);
+        if (match?.[1]) return match[1];
+      }
+
+      return null;
+    }
+
+    const parsedLabs = rawLabs
+      ? {
+          glu: extractLab([/\bGLU\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bGLUCOSA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          cr: extractLab([/\bCR\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bCRE\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bCREATININA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          na: extractLab([/\bNA\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bSODIO\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          k: extractLab([/\bK\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bPOTASIO\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          hb: extractLab([/\bHB\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bHEMOGLOBINA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          leu: extractLab([/\bLEU\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bLEUCOCITOS\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          pct: extractLab([/\bPCT\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          bnp: extractLab([/\bBNP\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+          pcr: extractLab([/\bPCR\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
+        }
+      : null;
+
     const newLabs = {
       patient_id: id,
-      glu: String(formData.get("glu") ?? "").trim() || null,
-      cr: String(formData.get("cr") ?? "").trim() || null,
-      na: String(formData.get("na") ?? "").trim() || null,
-      k: String(formData.get("k") ?? "").trim() || null,
-      hb: String(formData.get("hb") ?? "").trim() || null,
-      leu: String(formData.get("leu") ?? "").trim() || null,
-      pct: String(formData.get("pct") ?? "").trim() || null,
-      bnp: String(formData.get("bnp") ?? "").trim() || null,
-      pcr: String(formData.get("pcr") ?? "").trim() || null,
-      otros: String(formData.get("otros") ?? "").trim() || null,
+      glu: String(formData.get("glu") ?? "").trim() || parsedLabs?.glu || null,
+      cr: String(formData.get("cr") ?? "").trim() || parsedLabs?.cr || null,
+      na: String(formData.get("na") ?? "").trim() || parsedLabs?.na || null,
+      k: String(formData.get("k") ?? "").trim() || parsedLabs?.k || null,
+      hb: String(formData.get("hb") ?? "").trim() || parsedLabs?.hb || null,
+      leu: String(formData.get("leu") ?? "").trim() || parsedLabs?.leu || null,
+      pct: String(formData.get("pct") ?? "").trim() || parsedLabs?.pct || null,
+      bnp: String(formData.get("bnp") ?? "").trim() || parsedLabs?.bnp || null,
+      pcr: String(formData.get("pcr") ?? "").trim() || parsedLabs?.pcr || null,
+      otros: String(formData.get("otros") ?? "").trim() || (rawLabs ? `Texto original: ${rawLabs}` : null),
     };
 
     const hasAnyLab = Object.entries(newLabs).some(
@@ -547,6 +572,21 @@ PLAN:`;
 
             <form action={createLabs} className="rounded-2xl bg-[#071A2F] p-4">
               <p className="mb-3 font-semibold text-cyan-300">Capturar laboratorios</p>
+
+              <div className="mb-4">
+                <label className="mb-2 block text-sm text-slate-400">
+                  Pegar laboratorios
+                </label>
+                <textarea
+                  name="rawLabs"
+                  placeholder="Ejemplo: GLU 92 URE 102 CRE 6.0 NA 140 K 4.2 LEU 12.1 HB 9.8 PLAQ 210"
+                  rows={4}
+                  className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  SynapMed intentará llenar Glu, Cr, Na, K, Hb, Leu, PCT, BNP y PCR automáticamente al guardar.
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
                 <input name="glu" placeholder="Glu" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
