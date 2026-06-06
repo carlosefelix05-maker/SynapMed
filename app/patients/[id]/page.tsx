@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export default async function PatientPage({
   params,
@@ -83,6 +84,18 @@ export default async function PatientPage({
 
     revalidatePath(`/patients/${id}`);
     revalidatePath("/");
+  }
+
+  async function dischargePatient() {
+    "use server";
+
+    await supabase.from("round_logs").delete().eq("patient_id", id);
+    await supabase.from("labs").delete().eq("patient_id", id);
+    await supabase.from("notes").delete().eq("patient_id", id);
+    await supabase.from("patients").delete().eq("id", id);
+
+    revalidatePath("/");
+    redirect("/");
   }
 
   if (!patient) {
@@ -276,6 +289,14 @@ PLAN:`;
                 className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
               >
                 ✓ Pase completado
+              </button>
+            </form>
+            <form action={dischargePatient}>
+              <button
+                type="submit"
+                className="rounded-xl bg-red-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-red-300"
+              >
+                Dar de alta / retirar
               </button>
             </form>
           </div>
