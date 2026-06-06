@@ -64,6 +64,33 @@ ANÁLISIS:
 
 PLAN:`;
 
+  const plantillaIngreso = `FICHA DE IDENTIFICACIÓN:
+NOMBRE:
+EDAD:
+SEXO:
+CAMA:
+
+PADECIMIENTO ACTUAL:
+
+ANTECEDENTES HEREDOFAMILIARES:
+
+ANTECEDENTES PERSONALES NO PATOLÓGICOS:
+
+ANTECEDENTES PERSONALES PATOLÓGICOS:
+
+EXPLORACIÓN FÍSICA:
+NEUROLÓGICO:
+CARDIOVASCULAR:
+RESPIRATORIO:
+ABDOMEN:
+EXTREMIDADES:
+
+PARACLÍNICOS:
+
+ANÁLISIS:
+
+PLAN:`;
+
   return (
     <main className="min-h-screen bg-[#061325] p-8 text-white">
       <div className="mx-auto max-w-6xl">
@@ -225,6 +252,13 @@ EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
 ANÁLISIS:
 
 PLAN:`}
+              </p>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+              <p className="mb-2 font-semibold text-cyan-300">Plantilla de ingreso</p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+                {plantillaIngreso}
               </p>
             </div>
 
