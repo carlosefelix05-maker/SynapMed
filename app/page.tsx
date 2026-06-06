@@ -10,11 +10,32 @@ type Patient = {
   priority: string | null;
 };
 
+type Lab = {
+  id: string;
+  patient_id: string;
+  glu: string | null;
+  cr: string | null;
+  na: string | null;
+  k: string | null;
+  hb: string | null;
+  leu: string | null;
+  pct: string | null;
+  bnp: string | null;
+  pcr: string | null;
+  otros: string | null;
+  created_at: string;
+};
+
 export default async function Home() {
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*")
     .order("bed", { ascending: true });
+
+  const { data: labs } = await supabase
+    .from("labs")
+    .select("*")
+    .order("created_at", { ascending: false });
 
   if (error) {
     return (
@@ -26,6 +47,29 @@ export default async function Home() {
   }
 
   const list = (patients ?? []) as Patient[];
+  const labsList = (labs ?? []) as Lab[];
+  const latestLabsByPatient = new Map<string, Lab>();
+
+  for (const lab of labsList) {
+    if (!latestLabsByPatient.has(lab.patient_id)) {
+      latestLabsByPatient.set(lab.patient_id, lab);
+    }
+  }
+
+  function formatLabs(lab?: Lab) {
+    if (!lab) return "Sin labs";
+
+    return [
+      lab.cr ? `Cr ${lab.cr}` : null,
+      lab.k ? `K ${lab.k}` : null,
+      lab.hb ? `Hb ${lab.hb}` : null,
+      lab.leu ? `Leu ${lab.leu}` : null,
+      lab.pct ? `PCT ${lab.pct}` : null,
+      lab.bnp ? `BNP ${lab.bnp}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Sin labs";
+  }
 
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
@@ -116,20 +160,20 @@ export default async function Home() {
             <h3 className="mb-4 text-xl font-bold">Lista de pacientes</h3>
 
             <div className="overflow-hidden rounded-2xl border border-white/10">
-              <div className="grid grid-cols-5 bg-white/10 px-4 py-3 text-sm text-slate-300">
+              <div className="grid grid-cols-6 bg-white/10 px-4 py-3 text-sm text-slate-300">
                 <span>Cama</span>
                 <span>Paciente</span>
                 <span>Edad / Sexo</span>
                 <span>Diagnóstico</span>
                 <span>Prioridad</span>
+                <span>Labs</span>
               </div>
 
               {list.map((patient) => (
                 <a
-  href={`/patients/${patient.id}`}
-  key={patient.id}
+                  href={`/patients/${patient.id}`}
                   key={patient.id}
-                  className="grid grid-cols-5 border-t border-white/10 px-4 py-4 text-sm"
+                  className="grid grid-cols-6 border-t border-white/10 px-4 py-4 text-sm transition hover:bg-white/10"
                 >
                   <span className="font-semibold">{patient.bed}</span>
                   <span>{patient.full_name}</span>
@@ -138,6 +182,9 @@ export default async function Home() {
                   </span>
                   <span className="text-slate-300">{patient.diagnosis}</span>
                   <span>{patient.priority}</span>
+                  <span className="text-slate-300">
+                    {formatLabs(latestLabsByPatient.get(patient.id))}
+                  </span>
                 </a>
               ))}
             </div>
