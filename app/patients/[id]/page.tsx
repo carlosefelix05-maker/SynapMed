@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
 
 export default async function PatientPage({
   params,
@@ -193,12 +193,30 @@ export default async function PatientPage({
               </button>
             </form>
 
+            <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+              <p className="mb-2 font-semibold text-cyan-300">Plantilla MI rápida</p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+{`AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
+
+EXPLORACIÓN FÍSICA:
+NEUROLÓGICO: CONSCIENTE, ORIENTADO, SIN DATOS DE FOCALIZACIÓN NEUROLÓGICA.
+CARDIOVASCULAR: RUIDOS CARDIACOS RÍTMICOS, DE BUEN TONO E INTENSIDAD.
+RESPIRATORIO: ADECUADA EXPANSIÓN TORÁCICA, MURMULLO VESICULAR PRESENTE.
+ABDOMEN: BLANDO, DEPRESIBLE, NO DOLOROSO.
+EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
+
+ANÁLISIS:
+
+PLAN:`}
+              </p>
+            </div>
+
             {notes && notes.length > 0 ? (
               <div className="space-y-4">
                 {notes.map((note) => (
                   <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
                     <p className="font-bold">{note.title}</p>
-                    <p className="mt-2 text-slate-300">{note.content}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-slate-300">{note.content}</p>
                   </div>
                 ))}
               </div>
