@@ -37,6 +37,11 @@ export default async function Home() {
     .select("*")
     .order("created_at", { ascending: false });
 
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("patient_id, created_at")
+    .order("created_at", { ascending: false });
+
   if (error) {
     return (
       <main className="min-h-screen bg-[#071A2F] p-10 text-white">
@@ -48,11 +53,21 @@ export default async function Home() {
 
   const list = (patients ?? []) as Patient[];
   const labsList = (labs ?? []) as Lab[];
+  const notesList = (notes ?? []) as { patient_id: string; created_at: string }[];
   const latestLabsByPatient = new Map<string, Lab>();
 
   for (const lab of labsList) {
     if (!latestLabsByPatient.has(lab.patient_id)) {
       latestLabsByPatient.set(lab.patient_id, lab);
+    }
+  }
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const patientsWithNoteToday = new Set<string>();
+
+  for (const note of notesList) {
+    if (note.created_at?.slice(0, 10) === todayKey) {
+      patientsWithNoteToday.add(note.patient_id);
     }
   }
 
@@ -174,6 +189,7 @@ export default async function Home() {
   const stableCount = patientSummaries.filter((item) => item.priority === "Estable").length;
   const noLabsCount = patientSummaries.filter((item) => !item.lab).length;
   const criticalPendingCount = criticalCount;
+  const noNoteTodayCount = patientSummaries.filter((item) => !patientsWithNoteToday.has(item.patient.id)).length;
 
   const criticalAlerts = patientSummaries
     .filter((item) => item.priority === "Crítico")
@@ -302,7 +318,8 @@ export default async function Home() {
               <div className="space-y-2 text-sm text-slate-300">
                 <p>• {noLabsCount} paciente(s) sin laboratorios capturados</p>
                 <p>• {criticalPendingCount} paciente(s) en estado crítico</p>
-                <p>• Revisar evolución médica y plan del día</p>
+                <p>• {noNoteTodayCount} paciente(s) sin evolución registrada hoy</p>
+                <p>• Revisar plan del día y pendientes clínicos</p>
               </div>
             </div>
           </section>
