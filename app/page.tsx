@@ -158,6 +158,30 @@ export default async function Home() {
     return fallback || "Estable";
   }
 
+  const patientSummaries = list.map((patient) => {
+    const lab = latestLabsByPatient.get(patient.id);
+    const priority = visualPriority(lab, patient.priority);
+
+    return {
+      patient,
+      lab,
+      priority,
+    };
+  });
+
+  const criticalCount = patientSummaries.filter((item) => item.priority === "Crítico").length;
+  const highPriorityCount = patientSummaries.filter((item) => item.priority === "Alta").length;
+  const stableCount = patientSummaries.filter((item) => item.priority === "Estable").length;
+  const noLabsCount = patientSummaries.filter((item) => !item.lab).length;
+
+  const criticalAlerts = patientSummaries
+    .filter((item) => item.priority === "Crítico")
+    .map((item) => ({
+      bed: item.patient.bed,
+      name: item.patient.full_name,
+      labs: formatLabs(item.lab),
+    }));
+
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
@@ -223,23 +247,76 @@ export default async function Home() {
               <div className="rounded-2xl bg-[#071A2F] p-4">
                 <p className="text-sm text-slate-400">Críticos</p>
                 <p className="mt-2 text-3xl font-bold text-red-400">
-                  {list.filter((p) => p.priority === "Crítico").length}
+                  {criticalCount}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-[#071A2F] p-4">
                 <p className="text-sm text-slate-400">Prioritarios</p>
                 <p className="mt-2 text-3xl font-bold text-orange-300">
-                  {list.filter((p) => p.priority === "Alta").length}
+                  {highPriorityCount}
                 </p>
               </div>
 
               <div className="rounded-2xl bg-[#071A2F] p-4">
                 <p className="text-sm text-slate-400">Estables</p>
                 <p className="mt-2 text-3xl font-bold text-green-300">
-                  {list.filter((p) => p.priority === "Estable").length}
+                  {stableCount}
                 </p>
               </div>
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-3xl bg-white/10 p-6">
+            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">☀️ Morning Report</h3>
+                <p className="text-sm text-slate-400">
+                  Resumen automático del servicio
+                </p>
+              </div>
+
+              <p className="text-sm text-slate-400">
+                Sincronizado con últimos laboratorios
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Críticos</p>
+                <p className="mt-2 text-3xl font-bold text-red-400">{criticalCount}</p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Alta prioridad</p>
+                <p className="mt-2 text-3xl font-bold text-amber-300">{highPriorityCount}</p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Estables</p>
+                <p className="mt-2 text-3xl font-bold text-green-300">{stableCount}</p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Sin labs</p>
+                <p className="mt-2 text-3xl font-bold text-slate-300">{noLabsCount}</p>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-[#071A2F] p-4">
+              <h4 className="mb-3 font-semibold text-cyan-300">Alertas críticas</h4>
+
+              {criticalAlerts.length > 0 ? (
+                <div className="space-y-2 text-sm text-red-300">
+                  {criticalAlerts.map((alert, index) => (
+                    <p key={`${alert.bed}-${alert.name}-${alert.labs}-${index}`}>
+                      Cama {alert.bed} · {alert.name} · {alert.labs}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Sin alertas críticas al momento.</p>
+              )}
             </div>
           </section>
 
