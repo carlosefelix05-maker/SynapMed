@@ -29,6 +29,11 @@ export default async function PatientPage({
     .limit(1)
     .single();
 
+  const { data: allPatients } = await supabase
+    .from("patients")
+    .select("id, full_name, bed")
+    .order("bed", { ascending: true });
+
   async function createNote(formData: FormData) {
     "use server";
 
@@ -137,12 +142,50 @@ ANÁLISIS:
 
 PLAN:`;
 
+  const patientList = allPatients ?? [];
+  const currentPatientIndex = patientList.findIndex((item) => item.id === id);
+  const previousPatient = currentPatientIndex > 0 ? patientList[currentPatientIndex - 1] : null;
+  const nextPatient =
+    currentPatientIndex >= 0 && currentPatientIndex < patientList.length - 1
+      ? patientList[currentPatientIndex + 1]
+      : null;
+
   return (
     <main className="min-h-screen bg-[#061325] p-8 text-white">
       <div className="mx-auto max-w-6xl">
-        <Link href="/" className="mb-8 inline-block text-sm text-cyan-300">
-          ← Volver a Rounds
-        </Link>
+        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <Link href="/" className="text-sm text-cyan-300">
+            ← Volver a Rounds
+          </Link>
+
+          <div className="flex flex-wrap gap-3">
+            {previousPatient ? (
+              <Link
+                href={`/patients/${previousPatient.id}`}
+                className="rounded-xl bg-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/20"
+              >
+                ← Cama {previousPatient.bed}
+              </Link>
+            ) : (
+              <span className="rounded-xl bg-white/5 px-4 py-2 text-sm text-slate-500">
+                ← Sin anterior
+              </span>
+            )}
+
+            {nextPatient ? (
+              <Link
+                href={`/patients/${nextPatient.id}`}
+                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950"
+              >
+                Cama {nextPatient.bed} →
+              </Link>
+            ) : (
+              <span className="rounded-xl bg-white/5 px-4 py-2 text-sm text-slate-500">
+                Sin siguiente →
+              </span>
+            )}
+          </div>
+        </div>
 
         <section className="rounded-3xl bg-white/10 p-8">
           <p className="text-slate-400">Cama {patient.bed}</p>
