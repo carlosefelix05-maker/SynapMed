@@ -109,9 +109,11 @@ type TemplateKey = keyof typeof templates;
 export default function NoteTemplateSelector({ today, defaultTemplate }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>("mi");
   const [content, setContent] = useState(defaultTemplate || templates.mi.content);
+  const [title, setTitle] = useState(`${templates.mi.title} ${today}`);
 
   function changeTemplate(value: TemplateKey) {
     setSelectedTemplate(value);
+    setTitle(`${templates[value].title} ${today}`);
     setContent(templates[value].content);
   }
 
@@ -137,7 +139,8 @@ export default function NoteTemplateSelector({ today, defaultTemplate }: Props) 
       <div className="grid gap-4 md:grid-cols-2">
         <input
           name="title"
-          defaultValue={`${templates[selectedTemplate].title} ${today}`}
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
           className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
         />
 
