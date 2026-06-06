@@ -417,35 +417,47 @@ export default async function Home() {
                 <span>Pase</span>
               </div>
 
-              {pendingPatientSummaries.map(({ patient }) => (
-                <a
-                  href={`/patients/${patient.id}`}
-                  key={patient.id}
-                  className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
-                >
-                  <span className="font-semibold">{patient.bed}</span>
-                  <span>{patient.full_name}</span>
-                  <span className="text-slate-300">
-                    {patient.age} · {patient.sex}
-                  </span>
-                  <span className="text-slate-300">{patient.diagnosis}</span>
-                  <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
-                  <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
-                    {formatLabs(latestLabsByPatient.get(patient.id))}
-                  </span>
-                  <span>
-                    {patientsWithRoundCompletedToday.has(patient.id) ? (
-                      <span className="rounded-full bg-green-400/15 px-3 py-1 text-xs font-semibold text-green-300">
-                        ✓ Completado
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
-                        Pendiente
-                      </span>
-                    )}
-                  </span>
-                </a>
-              ))}
+              {pendingPatientSummaries.length === 0 ? (
+                <div className="p-10 text-center">
+                  <div className="text-5xl">🎉</div>
+                  <h4 className="mt-4 text-2xl font-bold text-cyan-300">
+                    Pase completado
+                  </h4>
+                  <p className="mt-2 text-slate-400">
+                    Todos los pacientes fueron revisados hoy.
+                  </p>
+                </div>
+              ) : (
+                pendingPatientSummaries.map(({ patient }) => (
+                  <a
+                    href={`/patients/${patient.id}`}
+                    key={patient.id}
+                    className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
+                  >
+                    <span className="font-semibold">{patient.bed}</span>
+                    <span>{patient.full_name}</span>
+                    <span className="text-slate-300">
+                      {patient.age} · {patient.sex}
+                    </span>
+                    <span className="text-slate-300">{patient.diagnosis}</span>
+                    <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
+                    <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
+                      {formatLabs(latestLabsByPatient.get(patient.id))}
+                    </span>
+                    <span>
+                      {patientsWithRoundCompletedToday.has(patient.id) ? (
+                        <span className="rounded-full bg-green-400/15 px-3 py-1 text-xs font-semibold text-green-300">
+                          ✓ Completado
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                          Pendiente
+                        </span>
+                      )}
+                    </span>
+                  </a>
+                ))
+              )}
             </div>
           </section>
         </section>
