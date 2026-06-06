@@ -100,6 +100,64 @@ export default async function Home() {
     return "text-green-300";
   }
 
+  function patientRowClass(lab?: Lab) {
+    if (!lab) return "border-t border-white/10 px-4 py-4 text-sm transition hover:bg-white/10";
+
+    const cr = Number(lab.cr);
+    const hb = Number(lab.hb);
+    const leu = Number(lab.leu);
+    const pct = Number(lab.pct);
+
+    if (
+      (!Number.isNaN(cr) && cr >= 2) ||
+      (!Number.isNaN(hb) && hb <= 8) ||
+      (!Number.isNaN(leu) && leu >= 15) ||
+      (!Number.isNaN(pct) && pct >= 2)
+    ) {
+      return "border-t border-red-400/30 bg-red-400/10 px-4 py-4 text-sm transition hover:bg-red-400/15";
+    }
+
+    if (
+      (!Number.isNaN(cr) && cr >= 1.5) ||
+      (!Number.isNaN(hb) && hb <= 10) ||
+      (!Number.isNaN(leu) && leu >= 12) ||
+      (!Number.isNaN(pct) && pct >= 0.5)
+    ) {
+      return "border-t border-amber-300/30 bg-amber-300/10 px-4 py-4 text-sm transition hover:bg-amber-300/15";
+    }
+
+    return "border-t border-green-300/20 bg-green-300/5 px-4 py-4 text-sm transition hover:bg-green-300/10";
+  }
+
+  function visualPriority(lab?: Lab, fallback?: string | null) {
+    if (!lab) return fallback || "Sin prioridad";
+
+    const cr = Number(lab.cr);
+    const hb = Number(lab.hb);
+    const leu = Number(lab.leu);
+    const pct = Number(lab.pct);
+
+    if (
+      (!Number.isNaN(cr) && cr >= 2) ||
+      (!Number.isNaN(hb) && hb <= 8) ||
+      (!Number.isNaN(leu) && leu >= 15) ||
+      (!Number.isNaN(pct) && pct >= 2)
+    ) {
+      return "Crítico";
+    }
+
+    if (
+      (!Number.isNaN(cr) && cr >= 1.5) ||
+      (!Number.isNaN(hb) && hb <= 10) ||
+      (!Number.isNaN(leu) && leu >= 12) ||
+      (!Number.isNaN(pct) && pct >= 0.5)
+    ) {
+      return "Alta";
+    }
+
+    return fallback || "Estable";
+  }
+
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
@@ -202,7 +260,7 @@ export default async function Home() {
                 <a
                   href={`/patients/${patient.id}`}
                   key={patient.id}
-                  className="grid grid-cols-6 border-t border-white/10 px-4 py-4 text-sm transition hover:bg-white/10"
+                  className={`grid grid-cols-6 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
                 >
                   <span className="font-semibold">{patient.bed}</span>
                   <span>{patient.full_name}</span>
@@ -210,7 +268,7 @@ export default async function Home() {
                     {patient.age} · {patient.sex}
                   </span>
                   <span className="text-slate-300">{patient.diagnosis}</span>
-                  <span>{patient.priority}</span>
+                  <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
                   <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
                     {formatLabs(latestLabsByPatient.get(patient.id))}
                   </span>
