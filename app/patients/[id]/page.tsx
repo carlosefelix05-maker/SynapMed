@@ -283,6 +283,12 @@ PLAN:`;
                 Sin siguiente →
               </span>
             )}
+            <Link
+              href={`/patients/${id}/edit`}
+              className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/20"
+            >
+              Editar paciente
+            </Link>
             <form action={completeRound}>
               <button
                 type="submit"
