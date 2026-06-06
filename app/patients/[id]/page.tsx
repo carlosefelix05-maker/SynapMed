@@ -49,6 +49,21 @@ export default async function PatientPage({
     );
   }
 
+  const today = new Date().toLocaleDateString("es-MX");
+
+  const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
+
+EXPLORACIÓN FÍSICA:
+NEUROLÓGICO: CONSCIENTE, ORIENTADO, SIN DATOS DE FOCALIZACIÓN NEUROLÓGICA.
+CARDIOVASCULAR: RUIDOS CARDIACOS RÍTMICOS, DE BUEN TONO E INTENSIDAD.
+RESPIRATORIO: ADECUADA EXPANSIÓN TORÁCICA, MURMULLO VESICULAR PRESENTE.
+ABDOMEN: BLANDO, DEPRESIBLE, NO DOLOROSO.
+EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
+
+ANÁLISIS:
+
+PLAN:`;
+
   return (
     <main className="min-h-screen bg-[#061325] p-8 text-white">
       <div className="mx-auto max-w-6xl">
@@ -156,6 +171,7 @@ export default async function PatientPage({
                   </label>
                   <input
                     name="title"
+                    defaultValue={`Evolución ${today}`}
                     placeholder="Evolución 06/06/2026"
                     className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
                   />
@@ -179,7 +195,8 @@ export default async function PatientPage({
                 </label>
                 <textarea
                   name="content"
-                  rows={5}
+                  rows={14}
+                  defaultValue={plantillaMI}
                   placeholder="Paciente al pase de visita..."
                   className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
                 />
