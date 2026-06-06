@@ -353,20 +353,21 @@ export default async function Home() {
             <h3 className="mb-4 text-xl font-bold">Lista de pacientes</h3>
 
             <div className="overflow-hidden rounded-2xl border border-white/10">
-              <div className="grid grid-cols-6 bg-white/10 px-4 py-3 text-sm text-slate-300">
+              <div className="grid grid-cols-7 bg-white/10 px-4 py-3 text-sm text-slate-300">
                 <span>Cama</span>
                 <span>Paciente</span>
                 <span>Edad / Sexo</span>
                 <span>Diagnóstico</span>
                 <span>Prioridad</span>
                 <span>Labs</span>
+                <span>Pase</span>
               </div>
 
               {list.map((patient) => (
                 <a
                   href={`/patients/${patient.id}`}
                   key={patient.id}
-                  className={`grid grid-cols-6 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
+                  className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
                 >
                   <span className="font-semibold">{patient.bed}</span>
                   <span>{patient.full_name}</span>
@@ -377,6 +378,17 @@ export default async function Home() {
                   <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
                   <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
                     {formatLabs(latestLabsByPatient.get(patient.id))}
+                  </span>
+                  <span>
+                    {patientsWithRoundCompletedToday.has(patient.id) ? (
+                      <span className="rounded-full bg-green-400/15 px-3 py-1 text-xs font-semibold text-green-300">
+                        ✓ Completado
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                        Pendiente
+                      </span>
+                    )}
                   </span>
                 </a>
               ))}
