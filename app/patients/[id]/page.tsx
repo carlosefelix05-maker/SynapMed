@@ -74,6 +74,17 @@ export default async function PatientPage({
     revalidatePath(`/patients/${id}`);
   }
 
+  async function completeRound() {
+    "use server";
+
+    await supabase.from("round_logs").insert({
+      patient_id: id,
+    });
+
+    revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
+  }
+
   if (!patient) {
     return (
       <main className="min-h-screen bg-[#061325] p-10 text-white">
@@ -184,6 +195,14 @@ PLAN:`;
                 Sin siguiente →
               </span>
             )}
+            <form action={completeRound}>
+              <button
+                type="submit"
+                className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
+              >
+                ✓ Pase completado
+              </button>
+            </form>
           </div>
         </div>
 
