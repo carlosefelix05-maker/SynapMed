@@ -21,6 +21,14 @@ export default async function PatientPage({
     .eq("patient_id", id)
     .order("created_at", { ascending: false });
 
+  const { data: latestLabs } = await supabase
+    .from("labs")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
   async function createNote(formData: FormData) {
     "use server";
 
@@ -36,6 +44,25 @@ export default async function PatientPage({
       type: "progress",
       title,
       content,
+    });
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function createLabs(formData: FormData) {
+    "use server";
+
+    await supabase.from("labs").insert({
+      patient_id: id,
+      glu: String(formData.get("glu") ?? "").trim(),
+      cr: String(formData.get("cr") ?? "").trim(),
+      na: String(formData.get("na") ?? "").trim(),
+      k: String(formData.get("k") ?? "").trim(),
+      hb: String(formData.get("hb") ?? "").trim(),
+      leu: String(formData.get("leu") ?? "").trim(),
+      pct: String(formData.get("pct") ?? "").trim(),
+      bnp: String(formData.get("bnp") ?? "").trim(),
+      pcr: String(formData.get("pcr") ?? "").trim(),
     });
 
     revalidatePath(`/patients/${id}`);
@@ -149,11 +176,37 @@ PLAN:`;
               Labs relevantes
             </h2>
 
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-white/10 px-3 py-1 text-sm">
-                Pendiente captura
-              </span>
+            <div className="mb-5 grid grid-cols-2 gap-2 text-slate-300 md:grid-cols-3">
+              <div className="rounded-xl bg-[#071A2F] p-3">Glu: {latestLabs?.glu || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">Cr: {latestLabs?.cr || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">Na: {latestLabs?.na || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">K: {latestLabs?.k || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">Hb: {latestLabs?.hb || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">Leu: {latestLabs?.leu || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">PCT: {latestLabs?.pct || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">BNP: {latestLabs?.bnp || "Pendiente"}</div>
+              <div className="rounded-xl bg-[#071A2F] p-3">PCR: {latestLabs?.pcr || "Pendiente"}</div>
             </div>
+
+            <form action={createLabs} className="rounded-2xl bg-[#071A2F] p-4">
+              <p className="mb-3 font-semibold text-cyan-300">Capturar laboratorios</p>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <input name="glu" placeholder="Glu" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="cr" placeholder="Cr" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="na" placeholder="Na" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="k" placeholder="K" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="hb" placeholder="Hb" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="leu" placeholder="Leu" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="pct" placeholder="PCT" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="bnp" placeholder="BNP" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+                <input name="pcr" placeholder="PCR" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
+              </div>
+
+              <button type="submit" className="mt-4 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950">
+                Guardar laboratorios
+              </button>
+            </form>
           </section>
 
           <section className="rounded-3xl bg-white/10 p-6">
