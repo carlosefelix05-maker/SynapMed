@@ -175,6 +175,14 @@ export default async function PatientPage({
     "Actualizar evolución y plan del día",
   ].filter(Boolean) as string[];
 
+  const synapseAnalysis = `Paciente con diagnóstico de ${
+    patient.diagnosis || "patología en estudio"
+  }, actualmente en seguimiento por Medicina Interna. ${synapsePriority} Se cuenta con últimos paraclínicos: ${
+    labsResumen || "pendientes de captura"
+  }. Se sugiere correlacionar con evolución clínica, exploración física, balance hídrico, respuesta al tratamiento y pendientes del día.`;
+
+  const synapsePlan = synapsePendings.join("; ");
+
   const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
 
 EXPLORACIÓN FÍSICA:
@@ -188,8 +196,10 @@ PARACLÍNICOS:
 ${labsResumen || "Pendientes de captura."}
 
 ANÁLISIS:
+${synapseAnalysis}
 
-PLAN:`;
+PLAN:
+${synapsePlan}`;
 
   const plantillaIngreso = `FICHA DE IDENTIFICACIÓN:
 NOMBRE:
