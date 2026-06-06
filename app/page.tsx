@@ -199,6 +199,11 @@ export default async function Home() {
       labs: formatLabs(item.lab),
     }));
 
+  const nextPatientForRounds =
+    patientSummaries.find((item) => item.priority === "Crítico")?.patient.id ||
+    patientSummaries.find((item) => item.priority === "Alta")?.patient.id ||
+    patientSummaries[0]?.patient.id;
+
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
@@ -250,9 +255,12 @@ export default async function Home() {
                 </p>
               </div>
 
-              <button className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950">
+              <a
+                href={nextPatientForRounds ? `/patients/${nextPatientForRounds}` : "#"}
+                className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
+              >
                 Iniciar Pase
-              </button>
+              </a>
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-300">
