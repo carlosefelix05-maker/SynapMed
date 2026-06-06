@@ -79,6 +79,21 @@ export default async function PatientPage({
 
   const today = new Date().toLocaleDateString("es-MX");
 
+  const labsResumen = [
+    latestLabs?.glu ? `Glu ${latestLabs.glu}` : null,
+    latestLabs?.cr ? `Cr ${latestLabs.cr}` : null,
+    latestLabs?.na ? `Na ${latestLabs.na}` : null,
+    latestLabs?.k ? `K ${latestLabs.k}` : null,
+    latestLabs?.hb ? `Hb ${latestLabs.hb}` : null,
+    latestLabs?.leu ? `Leu ${latestLabs.leu}` : null,
+    latestLabs?.pct ? `PCT ${latestLabs.pct}` : null,
+    latestLabs?.bnp ? `BNP ${latestLabs.bnp}` : null,
+    latestLabs?.pcr ? `PCR ${latestLabs.pcr}` : null,
+    latestLabs?.otros ? `Otros: ${latestLabs.otros}` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
 
 EXPLORACIÓN FÍSICA:
@@ -87,6 +102,9 @@ CARDIOVASCULAR: RUIDOS CARDIACOS RÍTMICOS, DE BUEN TONO E INTENSIDAD.
 RESPIRATORIO: ADECUADA EXPANSIÓN TORÁCICA, MURMULLO VESICULAR PRESENTE.
 ABDOMEN: BLANDO, DEPRESIBLE, NO DOLOROSO.
 EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
+
+PARACLÍNICOS:
+${labsResumen || "Pendientes de captura."}
 
 ANÁLISIS:
 
