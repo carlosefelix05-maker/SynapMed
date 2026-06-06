@@ -284,6 +284,12 @@ PLAN:`;
               </span>
             )}
             <Link
+              href={`/patients/${id}/notes/new`}
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              ✍️ Nueva nota
+            </Link>
+            <Link
               href={`/patients/${id}/edit`}
               className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/20"
             >
