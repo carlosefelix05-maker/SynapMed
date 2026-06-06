@@ -42,6 +42,11 @@ export default async function Home() {
     .select("patient_id, created_at")
     .order("created_at", { ascending: false });
 
+  const { data: roundLogs } = await supabase
+    .from("round_logs")
+    .select("patient_id, completed_at")
+    .order("completed_at", { ascending: false });
+
   if (error) {
     return (
       <main className="min-h-screen bg-[#071A2F] p-10 text-white">
@@ -54,6 +59,7 @@ export default async function Home() {
   const list = (patients ?? []) as Patient[];
   const labsList = (labs ?? []) as Lab[];
   const notesList = (notes ?? []) as { patient_id: string; created_at: string }[];
+  const roundLogsList = (roundLogs ?? []) as { patient_id: string; completed_at: string }[];
   const latestLabsByPatient = new Map<string, Lab>();
 
   for (const lab of labsList) {
@@ -68,6 +74,14 @@ export default async function Home() {
   for (const note of notesList) {
     if (note.created_at?.slice(0, 10) === todayKey) {
       patientsWithNoteToday.add(note.patient_id);
+    }
+  }
+
+  const patientsWithRoundCompletedToday = new Set<string>();
+
+  for (const log of roundLogsList) {
+    if (log.completed_at?.slice(0, 10) === todayKey) {
+      patientsWithRoundCompletedToday.add(log.patient_id);
     }
   }
 
@@ -190,6 +204,8 @@ export default async function Home() {
   const noLabsCount = patientSummaries.filter((item) => !item.lab).length;
   const criticalPendingCount = criticalCount;
   const noNoteTodayCount = patientSummaries.filter((item) => !patientsWithNoteToday.has(item.patient.id)).length;
+  const completedRoundsCount = patientSummaries.filter((item) => patientsWithRoundCompletedToday.has(item.patient.id)).length;
+  const pendingRoundsCount = patientSummaries.length - completedRoundsCount;
 
   const criticalAlerts = patientSummaries
     .filter((item) => item.priority === "Crítico")
@@ -299,8 +315,8 @@ export default async function Home() {
               </div>
 
               <div className="rounded-2xl bg-[#071A2F] p-4">
-                <p className="text-sm text-slate-400">Sin labs</p>
-                <p className="mt-2 text-3xl font-bold text-slate-300">{noLabsCount}</p>
+                <p className="text-sm text-slate-400">Pase completado</p>
+                <p className="mt-2 text-3xl font-bold text-cyan-300">{completedRoundsCount}</p>
               </div>
             </div>
 
@@ -327,6 +343,7 @@ export default async function Home() {
                 <p>• {noLabsCount} paciente(s) sin laboratorios capturados</p>
                 <p>• {criticalPendingCount} paciente(s) en estado crítico</p>
                 <p>• {noNoteTodayCount} paciente(s) sin evolución registrada hoy</p>
+                <p>• {pendingRoundsCount} paciente(s) pendientes de pase</p>
                 <p>• Revisar plan del día y pendientes clínicos</p>
               </div>
             </div>
