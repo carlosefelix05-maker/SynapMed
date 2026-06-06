@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type Patient = {
   id: string;
   full_name: string;
@@ -68,11 +71,17 @@ export default async function Home() {
     }
   }
 
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(todayStart.getDate() + 1);
+
   const patientsWithNoteToday = new Set<string>();
 
   for (const note of notesList) {
-    if (note.created_at?.slice(0, 10) === todayKey) {
+    const noteDate = note.created_at ? new Date(note.created_at) : null;
+
+    if (noteDate && noteDate >= todayStart && noteDate < tomorrowStart) {
       patientsWithNoteToday.add(note.patient_id);
     }
   }
@@ -80,7 +89,9 @@ export default async function Home() {
   const patientsWithRoundCompletedToday = new Set<string>();
 
   for (const log of roundLogsList) {
-    if (log.completed_at?.slice(0, 10) === todayKey) {
+    const completedDate = log.completed_at ? new Date(log.completed_at) : null;
+
+    if (completedDate && completedDate >= todayStart && completedDate < tomorrowStart) {
       patientsWithRoundCompletedToday.add(log.patient_id);
     }
   }
@@ -207,13 +218,27 @@ export default async function Home() {
   const completedRoundsCount = patientSummaries.filter((item) => patientsWithRoundCompletedToday.has(item.patient.id)).length;
   const pendingRoundsCount = patientSummaries.length - completedRoundsCount;
 
-  const criticalAlerts = patientSummaries
-    .filter((item) => item.priority === "Crítico")
-    .map((item) => ({
-      bed: item.patient.bed,
-      name: item.patient.full_name,
-      labs: formatLabs(item.lab),
-    }));
+  const pendingPatientSummaries = patientSummaries.filter(
+    (item) => !patientsWithRoundCompletedToday.has(item.patient.id)
+  );
+
+  const criticalAlertsMap = new Map<string, { bed: string | null; name: string; labs: string }>();
+
+  for (const item of patientSummaries.filter((summary) => summary.priority === "Crítico")) {
+    const alertKey = `${item.patient.bed}-${item.patient.full_name}`;
+    const currentLabs = formatLabs(item.lab);
+    const existingAlert = criticalAlertsMap.get(alertKey);
+
+    if (!existingAlert || existingAlert.labs === "Sin labs") {
+      criticalAlertsMap.set(alertKey, {
+        bed: item.patient.bed,
+        name: item.patient.full_name,
+        labs: currentLabs,
+      });
+    }
+  }
+
+  const criticalAlerts = Array.from(criticalAlertsMap.values());
 
   const nextPatientForRounds =
     patientSummaries.find((item) => item.priority === "Crítico")?.patient.id ||
@@ -280,7 +305,7 @@ export default async function Home() {
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-300">
-              <span className="font-semibold text-white">{list.length}</span> pacientes activos · Lista priorizada por últimos laboratorios
+              <span className="font-semibold text-cyan-300">⏳ {pendingRoundsCount}</span> pacientes pendientes de pase
             </div>
           </section>
 
@@ -363,7 +388,7 @@ export default async function Home() {
                 <span>Pase</span>
               </div>
 
-              {list.map((patient) => (
+              {pendingPatientSummaries.map(({ patient }) => (
                 <a
                   href={`/patients/${patient.id}`}
                   key={patient.id}
