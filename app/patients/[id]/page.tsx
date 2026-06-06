@@ -110,6 +110,25 @@ export default async function PatientPage({
     .filter(Boolean)
     .join(", ");
 
+  const synapsePriority =
+    latestLabs?.cr && Number(latestLabs.cr) >= 2
+      ? "Alerta renal por creatinina elevada."
+      : latestLabs?.hb && Number(latestLabs.hb) <= 8
+        ? "Alerta hematológica por anemia severa."
+        : latestLabs?.pct && Number(latestLabs.pct) >= 2
+          ? "Alerta infecciosa por procalcitonina elevada."
+          : latestLabs?.leu && Number(latestLabs.leu) >= 15
+            ? "Alerta inflamatoria/infecciosa por leucocitosis."
+            : "Sin criterios automáticos de alarma crítica por laboratorios.";
+
+  const synapseSummary = `${patient.sex || "Paciente"} de ${
+    patient.age || "edad no registrada"
+  } años, cama ${patient.bed || "sin cama"}, con diagnóstico principal: ${
+    patient.diagnosis || "no registrado"
+  }. ${synapsePriority} Últimos laboratorios: ${
+    labsResumen || "pendientes de captura"
+  }.`;
+
   const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
 
 EXPLORACIÓN FÍSICA:
@@ -229,6 +248,23 @@ PLAN:`;
               <p className="text-2xl font-bold">{patient.priority}</p>
             </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cyan-300">🧠 Synapse</h2>
+              <p className="text-sm text-slate-400">
+                Resumen clínico automático
+              </p>
+            </div>
+
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+              v1 clínica
+            </span>
+          </div>
+
+          <p className="leading-7 text-slate-200">{synapseSummary}</p>
         </section>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
