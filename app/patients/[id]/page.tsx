@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
 export default async function PatientPage({
@@ -19,6 +20,26 @@ export default async function PatientPage({
     .select("*")
     .eq("patient_id", id)
     .order("created_at", { ascending: false });
+
+  async function createNote(formData: FormData) {
+    "use server";
+
+    const title = String(formData.get("title") ?? "").trim();
+    const content = String(formData.get("content") ?? "").trim();
+
+    if (!title || !content) {
+      return;
+    }
+
+    await supabase.from("notes").insert({
+      patient_id: id,
+      type: "progress",
+      title,
+      content,
+    });
+
+    revalidatePath(`/patients/${id}`);
+  }
 
   if (!patient) {
     return (
@@ -117,9 +138,60 @@ export default async function PatientPage({
             </ul>
           </section>
           <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-              Notas clínicas
-            </h2>
+            <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-2xl font-bold text-cyan-300">
+                Notas clínicas
+              </h2>
+
+              <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-sm text-cyan-300">
+                + Nueva evolución
+              </span>
+            </div>
+
+            <form action={createNote} className="mb-6 rounded-2xl bg-[#071A2F] p-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm text-slate-400">
+                    Título
+                  </label>
+                  <input
+                    name="title"
+                    placeholder="Evolución 06/06/2026"
+                    className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-slate-400">
+                    Tipo
+                  </label>
+                  <input
+                    value="Progress Note"
+                    readOnly
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-slate-300 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="mb-2 block text-sm text-slate-400">
+                  Contenido
+                </label>
+                <textarea
+                  name="content"
+                  rows={5}
+                  placeholder="Paciente al pase de visita..."
+                  className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="mt-4 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950"
+              >
+                Guardar evolución
+              </button>
+            </form>
 
             {notes && notes.length > 0 ? (
               <div className="space-y-4">
