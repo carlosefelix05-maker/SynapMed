@@ -13,11 +13,13 @@ export default async function PatientPage({
     .select("*")
     .eq("id", id)
     .single();
-const { data: notes } = await supabase
-  .from("notes")
-  .select("*")
-  .eq("patient_id", id)
-  .order("created_at", { ascending: false });
+
+  const { data: notes } = await supabase
+    .from("notes")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false });
+
   if (!patient) {
     return (
       <main className="min-h-screen bg-[#061325] p-10 text-white">
@@ -114,18 +116,24 @@ const { data: notes } = await supabase
               <li>• Documentar Progress Note</li>
             </ul>
           </section>
-          <section className="mt-6 rounded-3xl bg-white/10 p-6">
-  <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-    Notas clínicas
-  </h2>
+          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
+            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
+              Notas clínicas
+            </h2>
 
-<div className="rounded-2xl bg-[#071A2F] p-4">
-  <p className="font-bold">Evolución 06/06/2026</p>
-  <p className="mt-2 text-slate-300">
-    Paciente estable, sin eventos agudos.
-  </p>
-</div>
-</section>
+            {notes && notes.length > 0 ? (
+              <div className="space-y-4">
+                {notes.map((note) => (
+                  <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
+                    <p className="font-bold">{note.title}</p>
+                    <p className="mt-2 text-slate-300">{note.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400">Sin notas clínicas registradas.</p>
+            )}
+          </section>
         </div>
       </div>
     </main>
