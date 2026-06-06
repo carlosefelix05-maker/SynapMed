@@ -13,6 +13,7 @@ type Patient = {
   diagnosis: string | null;
   bed: string | null;
   priority: string | null;
+  subspecialty: string | null;
 };
 
 type Lab = {
@@ -31,7 +32,13 @@ type Lab = {
   created_at: string;
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ subspecialty?: string }>;
+}) {
+  const params = await searchParams;
+  const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*")
@@ -224,6 +231,33 @@ export default async function Home() {
     (item) => !patientsWithRoundCompletedToday.has(item.patient.id)
   );
 
+  const visiblePendingPatientSummaries =
+    selectedSubspecialty === "Todas"
+      ? pendingPatientSummaries
+      : pendingPatientSummaries.filter(
+          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
+        );
+
+  const patientsBySubspecialty = visiblePendingPatientSummaries.reduce(
+    (groups, item) => {
+      const key = item.patient.subspecialty || "Medicina Interna";
+
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+
+      groups[key].push(item);
+      return groups;
+    },
+    {} as Record<string, typeof pendingPatientSummaries>
+  );
+
+  const subspecialtyOrder = Object.keys(patientsBySubspecialty).sort();
+
+  const availableSubspecialties = Array.from(
+    new Set(patientSummaries.map((item) => item.patient.subspecialty || "Medicina Interna"))
+  ).sort();
+
   const criticalAlertsMap = new Map<string, { bed: string | null; name: string; labs: string }>();
 
   for (const item of patientSummaries.filter((summary) => summary.priority === "Crítico")) {
@@ -242,10 +276,17 @@ export default async function Home() {
 
   const criticalAlerts = Array.from(criticalAlertsMap.values());
 
+  const roundsSource =
+    selectedSubspecialty === "Todas"
+      ? patientSummaries
+      : patientSummaries.filter(
+          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
+        );
+
   const nextPatientForRounds =
-    patientSummaries.find((item) => item.priority === "Crítico")?.patient.id ||
-    patientSummaries.find((item) => item.priority === "Alta")?.patient.id ||
-    patientSummaries[0]?.patient.id;
+    roundsSource.find((item) => item.priority === "Crítico")?.patient.id ||
+    roundsSource.find((item) => item.priority === "Alta")?.patient.id ||
+    roundsSource[0]?.patient.id;
 
   async function resetRounds() {
     "use server";
@@ -311,7 +352,7 @@ export default async function Home() {
               <div>
                 <h3 className="text-2xl font-bold">🏥 Rounds</h3>
                 <p className="text-slate-300">
-                  Medicina Interna · Pacientes desde Supabase
+                  {selectedSubspecialty === "Todas" ? "Medicina Interna" : selectedSubspecialty} · Pacientes desde Supabase
                 </p>
               </div>
 
@@ -333,8 +374,40 @@ export default async function Home() {
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-300">
-              <span className="font-semibold text-cyan-300">⏳ {pendingRoundsCount}</span> pacientes pendientes de pase
+              <span className="font-semibold text-cyan-300">⏳ {visiblePendingPatientSummaries.length}</span> pacientes pendientes de pase
+              {selectedSubspecialty !== "Todas" ? ` en ${selectedSubspecialty}` : ""}
             </div>
+
+            <form action="/" className="mt-4 flex flex-wrap items-center gap-3">
+              <select
+                name="subspecialty"
+                defaultValue={selectedSubspecialty}
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="Todas">Todas las subespecialidades</option>
+                {availableSubspecialties.map((subspecialty) => (
+                  <option key={subspecialty} value={subspecialty}>
+                    {subspecialty}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="submit"
+                className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Seleccionar pase
+              </button>
+
+              {selectedSubspecialty !== "Todas" ? (
+                <Link
+                  href="/"
+                  className="rounded-xl bg-white/10 px-5 py-3 text-sm text-slate-300 hover:bg-white/20"
+                >
+                  Ver todas
+                </Link>
+              ) : null}
+            </form>
           </section>
 
           <section className="mb-6 rounded-3xl bg-white/10 p-6">
@@ -427,7 +500,7 @@ export default async function Home() {
                 <span>Pase</span>
               </div>
 
-              {pendingPatientSummaries.length === 0 ? (
+              {visiblePendingPatientSummaries.length === 0 ? (
                 <div className="p-10 text-center">
                   <div className="text-5xl">🎉</div>
                   <h4 className="mt-4 text-2xl font-bold text-cyan-300">
@@ -438,34 +511,42 @@ export default async function Home() {
                   </p>
                 </div>
               ) : (
-                pendingPatientSummaries.map(({ patient }) => (
-                  <a
-                    href={`/patients/${patient.id}`}
-                    key={patient.id}
-                    className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
-                  >
-                    <span className="font-semibold">{patient.bed}</span>
-                    <span>{patient.full_name}</span>
-                    <span className="text-slate-300">
-                      {patient.age} · {patient.sex}
-                    </span>
-                    <span className="text-slate-300">{patient.diagnosis}</span>
-                    <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
-                    <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
-                      {formatLabs(latestLabsByPatient.get(patient.id))}
-                    </span>
-                    <span>
-                      {patientsWithRoundCompletedToday.has(patient.id) ? (
-                        <span className="rounded-full bg-green-400/15 px-3 py-1 text-xs font-semibold text-green-300">
-                          ✓ Completado
+                subspecialtyOrder.map((subspecialty) => (
+                  <div key={subspecialty}>
+                    <div className="border-t border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-cyan-300">
+                      {subspecialty} · {patientsBySubspecialty[subspecialty].length} paciente(s)
+                    </div>
+
+                    {patientsBySubspecialty[subspecialty].map(({ patient }) => (
+                      <a
+                        href={`/patients/${patient.id}`}
+                        key={patient.id}
+                        className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
+                      >
+                        <span className="font-semibold">{patient.bed}</span>
+                        <span>{patient.full_name}</span>
+                        <span className="text-slate-300">
+                          {patient.age} · {patient.sex}
                         </span>
-                      ) : (
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
-                          Pendiente
+                        <span className="text-slate-300">{patient.diagnosis}</span>
+                        <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
+                        <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
+                          {formatLabs(latestLabsByPatient.get(patient.id))}
                         </span>
-                      )}
-                    </span>
-                  </a>
+                        <span>
+                          {patientsWithRoundCompletedToday.has(patient.id) ? (
+                            <span className="rounded-full bg-green-400/15 px-3 py-1 text-xs font-semibold text-green-300">
+                              ✓ Completado
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                              Pendiente
+                            </span>
+                          )}
+                        </span>
+                      </a>
+                    ))}
+                  </div>
                 ))
               )}
             </div>
