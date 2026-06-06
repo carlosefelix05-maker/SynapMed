@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -245,6 +246,23 @@ export default async function Home() {
     patientSummaries.find((item) => item.priority === "Alta")?.patient.id ||
     patientSummaries[0]?.patient.id;
 
+  async function resetRounds() {
+    "use server";
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(todayStart.getDate() + 1);
+
+    await supabase
+      .from("round_logs")
+      .delete()
+      .gte("completed_at", todayStart.toISOString())
+      .lt("completed_at", tomorrowStart.toISOString());
+
+    revalidatePath("/");
+  }
+
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
@@ -318,9 +336,20 @@ export default async function Home() {
                 </p>
               </div>
 
-              <p className="text-sm text-slate-400">
-                Sincronizado con últimos laboratorios
-              </p>
+              <div className="flex flex-col gap-2 md:items-end">
+                <p className="text-sm text-slate-400">
+                  Sincronizado con últimos laboratorios
+                </p>
+
+                <form action={resetRounds}>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/20"
+                  >
+                    Reiniciar pase del día
+                  </button>
+                </form>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
