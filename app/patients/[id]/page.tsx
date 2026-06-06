@@ -228,6 +228,59 @@ export default async function PatientPage({
     });
   }
 
+  function timelineDate(value: string) {
+    return new Date(value).toLocaleDateString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  }
+
+  function timelineTime(value: string) {
+    return new Date(value).toLocaleTimeString("es-MX", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function timelineLabs(lab: any) {
+    return [
+      lab.cr ? `Cr ${lab.cr}` : null,
+      lab.hb ? `Hb ${lab.hb}` : null,
+      lab.leu ? `Leu ${lab.leu}` : null,
+      lab.na ? `Na ${lab.na}` : null,
+      lab.k ? `K ${lab.k}` : null,
+      lab.glu ? `Glu ${lab.glu}` : null,
+      lab.otros ? `Otros: ${lab.otros}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  const timelineItems = [
+    ...(notes ?? []).map((note) => ({
+      id: `note-${note.id}`,
+      type: "Nota",
+      date: note.created_at,
+      title: note.title || "Nota médica",
+      description: note.type || "Nota clínica",
+      href: `/patients/${id}/notes/${note.id}`,
+    })),
+    ...(labHistory ?? []).map((lab) => ({
+      id: `lab-${lab.id}`,
+      type: "Labs",
+      date: lab.created_at,
+      title: timelineLabs(lab) || "Laboratorios capturados",
+      description: "Registro de laboratorio",
+      href: null,
+    })),
+  ]
+    .filter((item) => Boolean(item.date))
+    .sort(
+      (a, b) =>
+        new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
+    );
+
   const synapsePriority =
     latestLabs?.cr && Number(latestLabs.cr) >= 2
       ? "Alerta renal por creatinina elevada."
@@ -502,6 +555,60 @@ PLAN:`;
         </section>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-cyan-300">
+                📅 Timeline clínico
+              </h2>
+              <p className="text-sm text-slate-400">
+                Notas y laboratorios ordenados por fecha
+              </p>
+            </div>
+
+            {timelineItems.length > 0 ? (
+              <div className="space-y-3">
+                {timelineItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-white/10 bg-[#071A2F] p-4"
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+                            {item.type}
+                          </span>
+                          <span className="text-xs text-slate-500">
+                            {timelineDate(item.date as string)} · {timelineTime(item.date as string)}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 font-semibold text-slate-100">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-sm text-slate-400">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
+                        >
+                          Abrir
+                        </Link>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin eventos clínicos registrados todavía.
+              </p>
+            )}
+          </section>
           <section className="rounded-3xl bg-white/10 p-6">
             <h2 className="mb-4 text-2xl font-bold text-cyan-300">
               Problemas activos
