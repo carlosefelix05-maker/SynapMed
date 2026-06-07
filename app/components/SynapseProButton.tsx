@@ -23,27 +23,19 @@ export default function SynapseProButton({
       const response = await fetch("/api/synapse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId,
-          patient,
-          latestLabs,
-          labTrends,
-          timeline,
-          notes,
-        }),
+        body: JSON.stringify({ patientId, patient, latestLabs, labTrends, timeline, notes }),
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data?.error || "No se pudo generar Synapse Pro");
+      if (!response.ok) throw new Error(data?.error || "No se pudo generar Synapse Pro");
+
+      if (data?.noteUrl) {
+        router.push(data.noteUrl);
+        return;
       }
 
       router.refresh();
-
-      if (data?.noteId) {
-        router.push(`/patients/${patientId}/notes/${data.noteId}`);
-      }
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido");
     } finally {
@@ -57,7 +49,7 @@ export default function SynapseProButton({
         type="button"
         onClick={generateSynapsePro}
         disabled={isLoading}
-        className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
       >
         {isLoading ? "Generando..." : "Generar análisis"}
       </button>

@@ -1,10 +1,19 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
+import { supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { patient, latestLabs, labTrends, timeline, notes } = body;
+    const { patientId, patient, latestLabs, labTrends, timeline, notes } = body;
+
+    if (!patientId) {
+      return NextResponse.json(
+        { error: "Falta patientId para guardar la nota" },
+        { status: 400 }
+      );
+    }
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
@@ -14,7 +23,8 @@ export async function POST(request: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
+
     const prompt = `Eres Synapse Pro, un asistente clínico para Medicina Interna.
 Redacta en español médico, estilo residente R+.
 No inventes datos no proporcionados.
@@ -66,20 +76,58 @@ PLAN:
 PENDIENTES DEL DÍA:
 - ...`;
 
-    const result = await model.generateContent(prompt);
-    const content = result.response.text();
+    let content = "";
+    let lastError: unknown = null;
+
+    for (const modelName of modelNames) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        content = result.response.text();
+        if (content) break;
+      } catch (error) {
+        lastError = error;
+        console.error(`Synapse Pro Gemini error with ${modelName}:`, error);
+      }
+    }
 
     if (!content) {
+      console.error("Synapse Pro no devolvió contenido:", lastError);
       return NextResponse.json(
-        { error: "Gemini no devolvió contenido" },
+        { error: "Gemini no devolvió contenido o está sin cuota disponible" },
+        { status: 503 }
+      );
+    }
+
+    const { data: insertedNote, error: insertError } = await supabase
+      .from("notes")
+      .insert({
+        patient_id: patientId,
+        type: "Synapse Pro",
+        title: `Synapse Pro ${new Date().toLocaleDateString("es-MX")}`,
+        content,
+      })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      return NextResponse.json(
+        { error: `Synapse Pro generó contenido, pero no pudo guardar la nota: ${insertError.message}` },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ content });
+    revalidatePath(`/patients/${patientId}`);
+
+    return NextResponse.json({
+      content,
+      noteId: insertedNote?.id,
+      noteUrl: insertedNote?.id
+        ? `/patients/${patientId}/notes/${insertedNote.id}`
+        : null,
+    });
   } catch (error) {
     console.error("Synapse Pro Gemini error:", error);
-
     return NextResponse.json(
       { error: "Error al generar Synapse Pro con Gemini" },
       { status: 500 }
