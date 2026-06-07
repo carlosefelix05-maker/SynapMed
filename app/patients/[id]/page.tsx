@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import NoteTemplateSelector from "@/app/components/NoteTemplateSelector";
+import SynapseProButton from "@/app/components/SynapseProButton";
 
 export default async function PatientPage({
   params,
@@ -603,14 +604,14 @@ PLAN:`;
                 v3 R++
               </span>
 
-              <form action={createSynapseNote}>
-                <button
-                  type="submit"
-                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
-                >
-                  Generar análisis
-                </button>
-              </form>
+              <SynapseProButton
+  patientId={id}
+  patient={patient}
+  latestLabs={latestLabs}
+  labTrends={labHistory ?? []}
+  timeline={timelineItems}
+  notes={notes ?? []}
+/>
             </div>
           </div>
 
