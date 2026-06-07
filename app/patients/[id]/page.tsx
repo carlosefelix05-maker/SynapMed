@@ -63,6 +63,104 @@ export default async function PatientPage({
     revalidatePath(`/patients/${id}`);
   }
 
+  async function createSynapseNote() {
+    "use server";
+
+    const { data: patientData } = await supabase
+      .from("patients")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    const { data: latestLabData } = await supabase
+      .from("labs")
+      .select("*")
+      .eq("patient_id", id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    const labsText = latestLabData
+      ? [
+          latestLabData.glu ? `Glu ${latestLabData.glu}` : null,
+          latestLabData.cr ? `Cr ${latestLabData.cr}` : null,
+          latestLabData.na ? `Na ${latestLabData.na}` : null,
+          latestLabData.k ? `K ${latestLabData.k}` : null,
+          latestLabData.hb ? `Hb ${latestLabData.hb}` : null,
+          latestLabData.leu ? `Leu ${latestLabData.leu}` : null,
+          latestLabData.pct ? `PCT ${latestLabData.pct}` : null,
+          latestLabData.bnp ? `BNP ${latestLabData.bnp}` : null,
+          latestLabData.pcr ? `PCR ${latestLabData.pcr}` : null,
+          latestLabData.otros ? `Otros: ${latestLabData.otros}` : null,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : "Pendientes de captura";
+
+    const alerts = [
+      latestLabData?.cr && Number(latestLabData.cr) >= 2
+        ? `Cr ${latestLabData.cr}: lesión renal/azoados elevados a correlacionar`
+        : null,
+      latestLabData?.hb && Number(latestLabData.hb) <= 8
+        ? `Hb ${latestLabData.hb}: anemia severa a correlacionar con sangrado o cronicidad`
+        : null,
+      latestLabData?.k && Number(latestLabData.k) >= 5.5
+        ? `K ${latestLabData.k}: hiperkalemia, valorar EKG y manejo específico`
+        : null,
+      latestLabData?.na && Number(latestLabData.na) <= 130
+        ? `Na ${latestLabData.na}: hiponatremia clínicamente relevante`
+        : null,
+      latestLabData?.leu && Number(latestLabData.leu) >= 15
+        ? `Leu ${latestLabData.leu}: leucocitosis significativa, valorar foco infeccioso/inflamatorio`
+        : null,
+      latestLabData?.pct && Number(latestLabData.pct) >= 2
+        ? `PCT ${latestLabData.pct}: marcador compatible con proceso infeccioso significativo`
+        : null,
+      latestLabData?.bnp && Number(latestLabData.bnp) >= 500
+        ? `BNP ${latestLabData.bnp}: probable sobrecarga o estrés miocárdico a correlacionar`
+        : null,
+    ].filter(Boolean);
+
+    const problems = String(patientData?.diagnosis ?? "")
+      .split("/")
+      .map((problem) => problem.trim())
+      .filter(Boolean);
+
+    const generatedContent = `ANÁLISIS SYNAPSE AI v2:
+Paciente ${patientData?.sex || ""} de ${patientData?.age || "edad no registrada"} años, en cama ${patientData?.bed || "sin cama"}, con diagnóstico principal: ${patientData?.diagnosis || "no registrado"}.
+
+PROBLEMAS ACTIVOS:
+${problems.length > 0 ? problems.map((problem, index) => `${index + 1}. ${problem}`).join("\n") : "1. Sin problemas registrados."}
+
+PARACLÍNICOS RECIENTES:
+${labsText}
+
+ALERTAS AUTOMÁTICAS:
+${alerts.length > 0 ? alerts.map((alert) => `• ${alert}`).join("\n") : "• Sin alertas críticas automáticas por laboratorios capturados."}
+
+INTEGRACIÓN:
+Paciente en seguimiento por Medicina Interna. Al momento se integra con los diagnósticos registrados y paraclínicos recientes. La prioridad clínica se orienta a identificar datos de deterioro hemodinámico, respiratorio, renal, infeccioso o hematológico. Requiere correlación estrecha con exploración física, balance hídrico, diuresis, respuesta al tratamiento y evolución durante el pase de visita.
+
+PLAN:
+• Continuar vigilancia clínica y hemodinámica.
+• Actualizar exploración física dirigida por aparatos y sistemas.
+• Vigilar tendencia de laboratorios, especialmente función renal, electrolitos, biometría hemática y marcadores inflamatorios.
+• Revalorar balance hídrico, diuresis y necesidad de ajuste de líquidos/diurético según contexto clínico.
+• Ajustar tratamiento de acuerdo con evolución, comorbilidades, función renal y respuesta terapéutica.
+• Mantener búsqueda activa de datos de alarma: deterioro neurológico, disnea, dolor torácico, fiebre, sangrado, oliguria o inestabilidad.
+• Documentar evolución y plan definitivo posterior al pase.`;
+
+    await supabase.from("notes").insert({
+      patient_id: id,
+      type: "Synapse AI",
+      title: `Synapse AI v2 ${new Date().toLocaleDateString("es-MX")}`,
+      content: generatedContent,
+    });
+
+    revalidatePath(`/patients/${id}`);
+    redirect(`/patients/${id}`);
+  }
+
   async function deleteNote(formData: FormData) {
     "use server";
 
@@ -506,12 +604,34 @@ PLAN:`;
               </p>
             </div>
 
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-              v2 clínica
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+                v1 AI
+              </span>
+
+              <form action={createSynapseNote}>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                >
+                  Generar análisis
+                </button>
+              </form>
+            </div>
           </div>
 
           <p className="mb-5 leading-7 text-slate-200">{synapseSummary}</p>
+
+          <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-[#071A2F] p-4">
+            <h3 className="mb-2 font-semibold text-cyan-300">Borrador Synapse AI v2 estilo R+</h3>
+            <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
+{`ANÁLISIS:
+${synapseAnalysis}
+
+PLAN:
+${synapsePlan}`}
+            </p>
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-2xl bg-[#071A2F] p-4">
