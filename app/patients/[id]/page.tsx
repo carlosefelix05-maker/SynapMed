@@ -161,23 +161,6 @@ PLAN:
     redirect(`/patients/${id}`);
   }
 
-  async function deleteNote(formData: FormData) {
-    "use server";
-
-    const noteId = String(formData.get("noteId") ?? "").trim();
-
-    if (!noteId) {
-      return;
-    }
-
-    await supabase
-      .from("notes")
-      .delete()
-      .eq("id", noteId)
-      .eq("patient_id", id);
-
-    revalidatePath(`/patients/${id}`);
-  }
 
   async function createLabs(formData: FormData) {
     "use server";
@@ -932,15 +915,12 @@ PLAN:`}
               Editar
             </Link>
 
-            <form action={deleteNote}>
-              <input type="hidden" name="noteId" value={note.id} />
-              <button
-                type="submit"
-                className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
-              >
-                Eliminar
-              </button>
-            </form>
+            <Link
+              href={`/patients/${id}/notes/${note.id}?confirmDelete=1`}
+              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+            >
+              Eliminar
+            </Link>
           </div>
         </div>
 
