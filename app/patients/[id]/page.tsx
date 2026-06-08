@@ -640,6 +640,27 @@ const { error } = await supabase.from("patient_tasks").insert({
     revalidatePath(`/patients/${id}`);
   }
 
+  async function deletePatientTask(formData: FormData) {
+    "use server";
+
+    const taskId = String(formData.get("taskId") ?? "").trim();
+
+    if (!taskId) return;
+
+    const { error } = await supabase
+      .from("patient_tasks")
+      .delete()
+      .eq("id", taskId)
+      .eq("patient_id", id);
+
+    if (error) {
+      console.error("Error al eliminar pendiente:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
+
   const synapsePlan = synapsePendings.join("; ");
 
   const priorityOrder: Record<string, number> = {
@@ -1245,24 +1266,36 @@ PLAN R++:
                           ) : null}
                         </div>
 
-                        <form action={updatePatientTaskStatus}>
-                          <input type="hidden" name="taskId" value={task.id} />
-                          <input
-                            type="hidden"
-                            name="status"
-                            value={isDone ? "Pendiente" : "Realizado"}
-                          />
-                          <button
-                            type="submit"
-                            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-                              isDone
-                                ? "bg-white/10 text-slate-200 hover:bg-white/20"
-                                : "bg-green-300 text-slate-950 hover:bg-green-200"
-                            }`}
-                          >
-                            {isDone ? "Marcar pendiente" : "Marcar realizado"}
-                          </button>
-                        </form>
+                        <div className="flex flex-wrap gap-2">
+                          <form action={updatePatientTaskStatus}>
+                            <input type="hidden" name="taskId" value={task.id} />
+                            <input
+                              type="hidden"
+                              name="status"
+                              value={isDone ? "Pendiente" : "Realizado"}
+                            />
+                            <button
+                              type="submit"
+                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                                isDone
+                                  ? "bg-white/10 text-slate-200 hover:bg-white/20"
+                                  : "bg-green-300 text-slate-950 hover:bg-green-200"
+                              }`}
+                            >
+                              {isDone ? "Marcar pendiente" : "Marcar realizado"}
+                            </button>
+                          </form>
+
+                          <form action={deletePatientTask}>
+                            <input type="hidden" name="taskId" value={task.id} />
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+                            >
+                              Eliminar
+                            </button>
+                          </form>
+                        </div>
                       </div>
                     </div>
                   );
