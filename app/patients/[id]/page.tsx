@@ -49,6 +49,12 @@ export default async function PatientPage({
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const { data: problems } = await supabase
+    .from("problems")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false });
+
   const { data: allPatients } = await supabase
     .from("patients")
     .select("id, full_name, bed, subspecialty")
@@ -739,7 +745,7 @@ PLAN R++:
                         </p>
                       </div>
 
-                      {item.href ? (
+                                            {item.href ? (
                         <Link
                           href={item.href}
                           className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
@@ -758,24 +764,54 @@ PLAN R++:
             )}
           </section>
           <section className="rounded-3xl bg-white/10 p-6">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-              Problemas activos
-            </h2>
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-2xl font-bold text-cyan-300">
+      🧠 Problemas activos
+    </h2>
 
-            <div className="flex flex-wrap gap-2">
-              {(patient.diagnosis ?? "")
-                .split("/")
-                .map((problem: string) => problem.trim())
-                .map((problem: string) => (
-                  <span
-                    key={problem}
-                    className="rounded-full bg-white/10 px-3 py-1 text-sm"
-                  >
-                    {problem}
-                  </span>
-                ))}
-            </div>
-          </section>
+    <Link
+      href={`/patients/${id}/problems/new`}
+      className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950"
+    >
+      + Nuevo problema
+    </Link>
+  </div>
+
+  {problems && problems.length > 0 ? (
+    <div className="space-y-3">
+      {problems.map((problem) => (
+        <div
+          key={problem.id}
+          className="rounded-2xl border border-white/10 bg-[#071A2F] p-4"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-red-400/10 px-3 py-1 text-xs text-red-300">
+              {problem.priority}
+            </span>
+
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+              {problem.status}
+            </span>
+          </div>
+
+          <p className="mt-3 font-semibold text-white">
+            {problem.title}
+          </p>
+
+          {problem.comments ? (
+            <p className="mt-2 text-sm text-slate-400">
+              {problem.comments}
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="text-slate-400">
+      Sin problemas registrados.
+    </p>
+  )}
+</section>
 
           <section className="rounded-3xl bg-white/10 p-6">
             <div className="mb-4 flex items-center justify-between">
