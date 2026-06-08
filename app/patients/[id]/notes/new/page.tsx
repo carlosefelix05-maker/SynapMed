@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewNotePage({
   params,
@@ -14,12 +15,14 @@ export default async function NewNotePage({
     .from("patients")
     .select("*")
     .eq("id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
   const { data: latestLabs } = await supabase
     .from("labs")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
@@ -74,6 +77,7 @@ Continuar vigilancia clínica; actualizar laboratorios según evolución; revalo
 
     await supabase.from("notes").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       type: type || "Progress Note",
       title,
       content,

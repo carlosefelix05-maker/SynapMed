@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewProblemPage({
   params,
@@ -14,6 +15,7 @@ export default async function NewProblemPage({
     .from("patients")
     .select("id, full_name, bed")
     .eq("id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
   async function createProblem(formData: FormData) {
@@ -28,6 +30,7 @@ export default async function NewProblemPage({
 
     const { error } = await supabase.from("problems").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       title,
       status: status || "Activo",
       priority: priority || "Media",

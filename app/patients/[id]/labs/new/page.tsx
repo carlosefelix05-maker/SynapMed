@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewLabsPage({
   params,
@@ -14,6 +15,7 @@ export default async function NewLabsPage({
     .from("patients")
     .select("id, full_name, bed, diagnosis")
     .eq("id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
   async function createLabs(formData: FormData) {
@@ -21,6 +23,7 @@ export default async function NewLabsPage({
 
     await supabase.from("labs").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       glu: String(formData.get("glu") ?? "").trim() || null,
       cr: String(formData.get("cr") ?? "").trim() || null,
       na: String(formData.get("na") ?? "").trim() || null,
