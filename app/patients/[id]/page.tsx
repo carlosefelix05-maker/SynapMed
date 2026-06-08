@@ -1219,7 +1219,7 @@ PLAN R++:
                           <form action={deleteTimelineLab}>
                             <input type="hidden" name="labId" value={item.labId} />
                             <ConfirmSubmitButton
-                              message="¿Eliminar este laboratorio o imagen del expediente?"
+                              message="¿Eliminar este laboratorio del expediente?"
                               className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                             >
                               Eliminar
@@ -1231,7 +1231,7 @@ PLAN R++:
                           <form action={deleteTimelineImage}>
                             <input type="hidden" name="imageId" value={item.imageId} />
                             <ConfirmSubmitButton
-                              message="¿Eliminar este laboratorio o imagen del expediente?"
+                              message="¿Eliminar esta imagen del expediente?"
                               className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                             >
                               Eliminar
