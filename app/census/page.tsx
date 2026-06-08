@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +38,7 @@ export default async function CensusPage({
   searchParams?: Promise<{ subspecialty?: string }>;
 }) {
   const params = await searchParams;
+  const supabase = await createClient();
   const selectedSubspecialty =
     params?.subspecialty && params.subspecialty !== "Todas"
       ? params.subspecialty
@@ -45,11 +47,13 @@ export default async function CensusPage({
   const { data: patients } = await supabase
     .from("patients")
     .select("*")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("bed", { ascending: true });
 
   const { data: labs } = await supabase
     .from("labs")
     .select("*")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const list = (patients ?? []) as Patient[];
