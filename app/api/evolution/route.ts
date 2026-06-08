@@ -1,5 +1,3 @@
-
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -79,6 +77,48 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: false })
       .limit(8);
 
+    const { data: problems } = await supabase
+      .from("problems")
+      .select("id, title, status, priority, comments, created_at, started_at, resolved_at")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false });
+
+    const priorityOrder: Record<string, number> = {
+      Crítico: 0,
+      Alta: 1,
+      Media: 2,
+      Baja: 3,
+    };
+
+    const statusOrder: Record<string, number> = {
+      Activo: 0,
+      Crónico: 1,
+      Resuelto: 2,
+    };
+
+    const activeProblems = [...(problems ?? [])]
+      .sort((a: any, b: any) => {
+        const statusA = statusOrder[a.status] ?? 9;
+        const statusB = statusOrder[b.status] ?? 9;
+
+        if (statusA !== statusB) return statusA - statusB;
+
+        const priorityA = priorityOrder[a.priority] ?? 9;
+        const priorityB = priorityOrder[b.priority] ?? 9;
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      })
+      .map((problem: any) => ({
+        title: problem.title,
+        status: problem.status,
+        priority: problem.priority,
+        comments: problem.comments,
+        started_at: problem.started_at,
+        resolved_at: problem.resolved_at,
+      }));
+
     const recentClinicalNotes = Array.isArray(notes)
       ? notes
           .filter(
@@ -117,6 +157,10 @@ REGLAS:
 - No incluyas advertencias legales ni menciones que eres IA.
 - No copies literalmente evoluciones previas; integra y actualiza.
 - Si hay discordancia documental, menciónala de forma breve en análisis.
+- Usa PROBLEMAS ACTIVOS como eje principal de la nota.
+- Si existen problemas activos registrados, redacta el análisis y plan por problemas.
+- Prioriza problemas Crítico y Alta antes que Media o Baja.
+- Los problemas Resueltos solo se mencionan si modifican conducta actual.
 
 PACIENTE:
 ${JSON.stringify(patient, null, 2)}
@@ -129,6 +173,9 @@ ${formatLabs(latestLab)}
 
 LABORATORIOS CRUDOS:
 ${JSON.stringify(latestLab, null, 2)}
+
+PROBLEMAS ACTIVOS REGISTRADOS:
+${JSON.stringify(activeProblems, null, 2)}
 
 EVOLUCIONES RECIENTES:
 ${JSON.stringify(recentClinicalNotes, null, 2)}
@@ -151,11 +198,15 @@ EXTREMIDADES:
 PARACLÍNICOS:
 Incluye laboratorios en una sola línea con abreviaturas y sin unidades.
 
-ANÁLISIS:
-Redacta análisis integrador tipo R+ / R4 de Medicina Interna, orientado a la subespecialidad ${patient.subspecialty || "Medicina Interna"}. Debe comparar evolución más reciente con previas y jerarquizar problemas.
+ANÁLISIS POR PROBLEMAS:
+Redacta análisis integrador tipo R+ / R4 de Medicina Interna, orientado a la subespecialidad ${patient.subspecialty || "Medicina Interna"}.
+Usa los problemas activos registrados como estructura principal.
+Para cada problema relevante integra: evolución más reciente, tendencia de laboratorios, estado actual, gravedad y conducta.
+Debe comparar evolución más reciente con previas y jerarquizar problemas.
 
-PLAN:
-Redacta plan médico concreto y útil para pase de visita, sin indicaciones de enfermería innecesarias.`;
+PLAN POR PROBLEMAS:
+Redacta plan médico concreto y útil para pase de visita, sin indicaciones de enfermería innecesarias.
+Organiza el plan por cada problema activo prioritario.`;
 
     let content = "";
     let lastError: unknown = null;

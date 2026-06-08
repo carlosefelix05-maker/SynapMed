@@ -189,6 +189,43 @@ PLAN R++:
     redirect(`/patients/${id}`);
   }
 
+  async function updateProblemStatus(formData: FormData) {
+    "use server";
+
+    const problemId = String(formData.get("problemId") ?? "").trim();
+    const status = String(formData.get("status") ?? "Activo").trim();
+
+    if (!problemId) return;
+
+    await supabase
+      .from("problems")
+      .update({
+        status,
+        resolved_at: status === "Resuelto" ? new Date().toISOString() : null,
+      })
+      .eq("id", problemId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function updateProblemPriority(formData: FormData) {
+    "use server";
+
+    const problemId = String(formData.get("problemId") ?? "").trim();
+    const priority = String(formData.get("priority") ?? "Media").trim();
+
+    if (!problemId) return;
+
+    await supabase
+      .from("problems")
+      .update({ priority })
+      .eq("id", problemId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
 
   async function createLabs(formData: FormData) {
     "use server";
@@ -470,6 +507,33 @@ PLAN R++:
   }. Se sugiere correlacionar con evolución clínica, exploración física, balance hídrico, respuesta al tratamiento y pendientes del día.`;
 
   const synapsePlan = synapsePendings.join("; ");
+
+  const priorityOrder: Record<string, number> = {
+    Crítico: 0,
+    Alta: 1,
+    Media: 2,
+    Baja: 3,
+  };
+
+  const statusOrder: Record<string, number> = {
+    Activo: 0,
+    Crónico: 1,
+    Resuelto: 2,
+  };
+
+  const smartProblems = [...(problems ?? [])].sort((a, b) => {
+    const statusA = statusOrder[a.status] ?? 9;
+    const statusB = statusOrder[b.status] ?? 9;
+
+    if (statusA !== statusB) return statusA - statusB;
+
+    const priorityA = priorityOrder[a.priority] ?? 9;
+    const priorityB = priorityOrder[b.priority] ?? 9;
+
+    if (priorityA !== priorityB) return priorityA - priorityB;
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
 
@@ -764,54 +828,105 @@ PLAN R++:
             )}
           </section>
           <section className="rounded-3xl bg-white/10 p-6">
-  <div className="mb-4 flex items-center justify-between">
-    <h2 className="text-2xl font-bold text-cyan-300">
-      🧠 Problemas activos
-    </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-cyan-300">
+                🧠 Problemas activos inteligentes
+              </h2>
 
-    <Link
-      href={`/patients/${id}/problems/new`}
-      className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950"
-    >
-      + Nuevo problema
-    </Link>
-  </div>
+              <Link
+                href={`/patients/${id}/problems/new`}
+                className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950"
+              >
+                + Nuevo problema
+              </Link>
+            </div>
 
-  {problems && problems.length > 0 ? (
-    <div className="space-y-3">
-      {problems.map((problem) => (
-        <div
-          key={problem.id}
-          className="rounded-2xl border border-white/10 bg-[#071A2F] p-4"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-red-400/10 px-3 py-1 text-xs text-red-300">
-              {problem.priority}
-            </span>
+            {smartProblems.length > 0 ? (
+              <div className="space-y-3">
+                {smartProblems.map((problem) => {
+                  const isResolved = problem.status === "Resuelto";
+                  const nextPriority =
+                    problem.priority === "Crítico"
+                      ? "Crítico"
+                      : problem.priority === "Alta"
+                        ? "Crítico"
+                        : problem.priority === "Media"
+                          ? "Alta"
+                          : "Media";
 
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
-              {problem.status}
-            </span>
-          </div>
+                  return (
+                    <div
+                      key={problem.id}
+                      className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
+                        isResolved ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-red-400/10 px-3 py-1 text-xs text-red-300">
+                              {problem.priority}
+                            </span>
 
-          <p className="mt-3 font-semibold text-white">
-            {problem.title}
-          </p>
+                            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+                              {problem.status}
+                            </span>
+                          </div>
 
-          {problem.comments ? (
-            <p className="mt-2 text-sm text-slate-400">
-              {problem.comments}
-            </p>
-          ) : null}
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p className="text-slate-400">
-      Sin problemas registrados.
-    </p>
-  )}
-</section>
+                          <p className="mt-3 font-semibold text-white">
+                            {problem.title}
+                          </p>
+
+                          {problem.comments ? (
+                            <p className="mt-2 text-sm text-slate-400">
+                              {problem.comments}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <form action={updateProblemPriority}>
+                            <input type="hidden" name="problemId" value={problem.id} />
+                            <input type="hidden" name="priority" value={nextPriority} />
+                            <button
+                              type="submit"
+                              disabled={isResolved || problem.priority === "Crítico"}
+                              className="rounded-xl bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              Subir prioridad
+                            </button>
+                          </form>
+
+                          <form action={updateProblemStatus}>
+                            <input type="hidden" name="problemId" value={problem.id} />
+                            <input
+                              type="hidden"
+                              name="status"
+                              value={isResolved ? "Activo" : "Resuelto"}
+                            />
+                            <button
+                              type="submit"
+                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                                isResolved
+                                  ? "bg-green-300 text-slate-950"
+                                  : "bg-white/10 text-slate-200 hover:bg-white/20"
+                              }`}
+                            >
+                              {isResolved ? "Reactivar" : "Resolver"}
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin problemas registrados.
+              </p>
+            )}
+          </section>
 
           <section className="rounded-3xl bg-white/10 p-6">
             <div className="mb-4 flex items-center justify-between">

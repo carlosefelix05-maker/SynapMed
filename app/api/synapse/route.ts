@@ -25,6 +25,48 @@ export async function POST(request: Request) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
+    const { data: problems } = await supabase
+      .from("problems")
+      .select("id, title, status, priority, comments, created_at, started_at, resolved_at")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false });
+
+    const priorityOrder: Record<string, number> = {
+      Crítico: 0,
+      Alta: 1,
+      Media: 2,
+      Baja: 3,
+    };
+
+    const statusOrder: Record<string, number> = {
+      Activo: 0,
+      Crónico: 1,
+      Resuelto: 2,
+    };
+
+    const activeProblems = [...(problems ?? [])]
+      .sort((a: any, b: any) => {
+        const statusA = statusOrder[a.status] ?? 9;
+        const statusB = statusOrder[b.status] ?? 9;
+
+        if (statusA !== statusB) return statusA - statusB;
+
+        const priorityA = priorityOrder[a.priority] ?? 9;
+        const priorityB = priorityOrder[b.priority] ?? 9;
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      })
+      .map((problem: any) => ({
+        title: problem.title,
+        status: problem.status,
+        priority: problem.priority,
+        comments: problem.comments,
+        started_at: problem.started_at,
+        resolved_at: problem.resolved_at,
+      }));
+
     const recentClinicalNotes = Array.isArray(notes)
       ? Array.from(
           new Map(
@@ -77,6 +119,10 @@ REGLAS:
 - Comparar explícitamente la EVOLUCIÓN MÁS RECIENTE contra las EVOLUCIONES PREVIAS.
 - Si existe una evolución posterior, debe ser la base principal del análisis.
 - No repetir literalmente la nota; sintetizar cambios clínicos, mejoría, deterioro o estabilidad.
+- Usar PROBLEMAS ACTIVOS como eje principal del análisis clínico.
+- Si existen problemas activos registrados, el análisis debe organizarse por problema y no solo por sistemas.
+- Los problemas con prioridad Crítico o Alta deben aparecer primero.
+- Los problemas Resueltos deben mencionarse solo si afectan la conducta actual.
 
 ESTILO DE ANÁLISIS:
 - Similar a nota de evolución de Medicina Interna.
@@ -93,6 +139,9 @@ ${JSON.stringify(latestLabs, null, 2)}
 
 TENDENCIAS DE LABORATORIO:
 ${JSON.stringify(labTrends, null, 2)}
+
+PROBLEMAS ACTIVOS REGISTRADOS:
+${JSON.stringify(activeProblems, null, 2)}
 
 TIMELINE CLÍNICO:
 ${JSON.stringify(timeline, null, 2)}
@@ -114,9 +163,10 @@ RESUMEN EJECUTIVO:
 - No cambies sexo, edad ni diagnóstico si las notas previas los contradicen; usa PACIENTE como fuente principal.
 
 PROBLEMAS ACTIVOS JERARQUIZADOS:
-1. ...
-2. ...
-3. ...
+Usa primero los problemas activos registrados. Para cada problema incluye estado, prioridad, interpretación y conducta sugerida.
+1. [Problema] — [Estado/Prioridad]: análisis breve y conducta.
+2. [Problema] — [Estado/Prioridad]: análisis breve y conducta.
+3. [Problema] — [Estado/Prioridad]: análisis breve y conducta.
 
 INTERPRETACIÓN DE PARACLÍNICOS:
 - Función renal.
@@ -128,11 +178,12 @@ INTERPRETACIÓN DE PARACLÍNICOS:
 ANÁLISIS CLÍNICO R++:
 Redacta un análisis integrador como residente avanzado de Medicina Interna.
 Debe incluir comparación temporal: qué cambió respecto a evoluciones previas, qué persiste, qué mejoró y qué empeoró.
+Debe estar orientado por problemas activos y correlacionar cada problema con laboratorios, notas recientes y timeline.
 
-PLAN MÉDICO PROPUESTO:
-1. ...
-2. ...
-3. ...
+PLAN MÉDICO PROPUESTO POR PROBLEMAS:
+1. [Problema]: conducta concreta.
+2. [Problema]: conducta concreta.
+3. [Problema]: conducta concreta.
 
 PENDIENTES DEL DÍA:
 - ...
