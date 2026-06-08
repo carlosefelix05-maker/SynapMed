@@ -494,16 +494,16 @@ PLAN R++:
   }
 
   const timelineItems = [
-    ...(notes ?? []).map((note) => ({
-      id: `note-${note.id}`,
-      type: "Nota",
-      date: note.created_at,
-      title: note.title || "Nota médica",
-      description: note.type || "Nota clínica",
-      href: `/patients/${id}/notes/${note.id}`,
-      noteId: note.id,
-      editable: true,
-    })),
+   ...(notes ?? []).map((note) => ({
+  id: `note-${note.id}`,
+  type: note.type || "Nota",
+  date: note.created_at,
+  title: note.title || "Nota médica",
+  description: note.type || "Nota clínica",
+  href: `/patients/${id}/notes/${note.id}`,
+  noteId: note.id,
+  editable: true,
+})),
     ...(labHistory ?? []).map((lab) => ({
       id: `lab-${lab.id}`,
       type: "Labs",
@@ -541,12 +541,15 @@ PLAN R++:
         new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
     );
 
-  function timelineBadgeClass(type: string) {
-    if (type === "Labs") return "bg-amber-300/10 text-amber-300";
-    if (type === "Imagen") return "bg-purple-300/10 text-purple-300";
-    if (type === "Pendiente realizado") return "bg-green-300/10 text-green-300";
-    return "bg-cyan-400/10 text-cyan-300";
-  }
+ function timelineBadgeClass(type: string) {
+  if (type === "Labs") return "bg-amber-300/10 text-amber-300";
+  if (type === "Imagen") return "bg-purple-300/10 text-purple-300";
+  if (type === "Pendiente realizado") return "bg-green-300/10 text-green-300";
+  if (type === "VPO generada") return "bg-indigo-300/10 text-indigo-300";
+  if (type === "Evolución generada") return "bg-emerald-300/10 text-emerald-300";
+  if (type === "Synapse AI") return "bg-cyan-400/10 text-cyan-300";
+  return "bg-cyan-400/10 text-cyan-300";
+}
 
   const synapsePriority =
     latestLabs?.cr && Number(latestLabs.cr) >= 2
