@@ -35,11 +35,21 @@ export default function LogoutButton() {
 
       const { data: membership } = await supabase
         .from("team_members")
-        .select("role, teams(name)")
+        .select("role, team_id")
         .eq("user_id", user.id)
         .maybeSingle();
 
-      const teamData = membership?.teams as { name?: string } | null;
+      let teamName = "Sin equipo";
+
+      if (membership?.team_id) {
+        const { data: team } = await supabase
+          .from("teams")
+          .select("name")
+          .eq("id", membership.team_id)
+          .maybeSingle();
+
+        teamName = team?.name || "Equipo";
+      }
 
       if (!mounted) return;
 
@@ -47,7 +57,7 @@ export default function LogoutButton() {
         name: profile?.full_name || user.email || "Usuario",
         email: profile?.email || user.email || "",
         role: membership?.role || profile?.role || "medico",
-        team: teamData?.name || "Sin equipo",
+        team: teamName,
       });
     }
 
@@ -60,9 +70,21 @@ export default function LogoutButton() {
 
   async function handleLogout() {
     setLoading(true);
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
+
+    try {
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Logout timeout")), 5000)
+        ),
+      ]);
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
+    } finally {
+      setLoading(false);
+      router.replace("/login");
+      router.refresh();
+    }
   }
 
   return (
