@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewProblemPage({
@@ -10,6 +10,8 @@ export default async function NewProblemPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const supabase = await createClient();
 
   const { data: patient } = await supabase
     .from("patients")
@@ -20,6 +22,8 @@ export default async function NewProblemPage({
 
   async function createProblem(formData: FormData) {
     "use server";
+
+    const supabase = await createClient();
 
     const title = String(formData.get("title") ?? "").trim();
     const status = String(formData.get("status") ?? "Activo").trim();
