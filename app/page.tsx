@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-
+import { CURRENT_TEAM_ID } from "@/lib/team";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -46,26 +46,31 @@ export default async function Home({
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("bed", { ascending: true });
 
   const { data: labs } = await supabase
     .from("labs")
     .select("*")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: notes } = await supabase
     .from("notes")
     .select("patient_id, created_at")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: roundLogs } = await supabase
     .from("round_logs")
     .select("patient_id, completed_at")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("completed_at", { ascending: false });
 
   const { data: patientTasks } = await supabase
     .from("patient_tasks")
     .select("id, patient_id, title, category, status, task_scope, created_at, completed_at")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -395,6 +400,7 @@ export default async function Home({
     await supabase
       .from("round_logs")
       .delete()
+      .eq("team_id", CURRENT_TEAM_ID)
       .gte("completed_at", todayStart.toISOString())
       .lt("completed_at", tomorrowStart.toISOString());
 

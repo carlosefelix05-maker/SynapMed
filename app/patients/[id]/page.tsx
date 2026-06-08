@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import SynapseProButton from "@/app/components/SynapseProButton";
@@ -26,18 +27,21 @@ export default async function PatientPage({
     .from("patients")
     .select("*")
     .eq("id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
   const { data: notes } = await supabase
     .from("notes")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: latestLabs } = await supabase
     .from("labs")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false })
     .limit(1)
     .single();
@@ -46,6 +50,7 @@ export default async function PatientPage({
     .from("labs")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -53,23 +58,27 @@ export default async function PatientPage({
     .from("problems")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: patientImages } = await supabase
     .from("patient_images")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: patientTasks } = await supabase
     .from("patient_tasks")
     .select("*")
     .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
   const { data: allPatients } = await supabase
     .from("patients")
     .select("id, full_name, bed, subspecialty")
+    .eq("team_id", CURRENT_TEAM_ID)
     .order("bed", { ascending: true });
 
   async function createNote(formData: FormData) {
@@ -84,6 +93,7 @@ export default async function PatientPage({
 
     await supabase.from("notes").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       type: "progress",
       title,
       content,
@@ -99,12 +109,14 @@ export default async function PatientPage({
       .from("patients")
       .select("*")
       .eq("id", id)
+      .eq("team_id", CURRENT_TEAM_ID)
       .single();
 
     const { data: latestLabData } = await supabase
       .from("labs")
       .select("*")
       .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID)
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
@@ -192,6 +204,7 @@ PLAN R++:
 
     await supabase.from("notes").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       type: "Synapse AI",
       title: `Synapse AI v3 R++ ${new Date().toLocaleDateString("es-MX")}`,
       content: generatedContent,
@@ -216,7 +229,8 @@ PLAN R++:
         resolved_at: status === "Resuelto" ? new Date().toISOString() : null,
       })
       .eq("id", problemId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath(`/patients/${id}`);
   }
@@ -233,7 +247,8 @@ PLAN R++:
       .from("problems")
       .update({ priority })
       .eq("id", problemId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath(`/patients/${id}`);
   }
@@ -250,6 +265,7 @@ PLAN R++:
 
     const { error } = await supabase.from("patient_tasks").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       title,
       category: category || null,
       task_scope: taskScope || "Guardia",
@@ -279,7 +295,8 @@ PLAN R++:
         completed_at: status === "Realizado" ? new Date().toISOString() : null,
       })
       .eq("id", taskId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     if (error) {
       console.error("Error al actualizar pendiente:", error.message);
@@ -320,6 +337,7 @@ PLAN R++:
 
     const newLabs = {
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       glu: String(formData.get("glu") ?? "").trim() || parsedLabs?.glu || null,
       cr: String(formData.get("cr") ?? "").trim() || parsedLabs?.cr || null,
       na: String(formData.get("na") ?? "").trim() || parsedLabs?.na || null,
@@ -333,7 +351,7 @@ PLAN R++:
     };
 
     const hasAnyLab = Object.entries(newLabs).some(
-      ([key, value]) => key !== "patient_id" && value !== null
+      ([key, value]) => key !== "patient_id" && key !== "team_id" && value !== null
     );
 
     if (!hasAnyLab) {
@@ -359,6 +377,7 @@ PLAN R++:
 
     await supabase.from("round_logs").insert({
       patient_id: id,
+      team_id: CURRENT_TEAM_ID,
     });
 
     revalidatePath(`/patients/${id}`);
@@ -374,10 +393,10 @@ PLAN R++:
   async function dischargePatient() {
     "use server";
 
-    await supabase.from("round_logs").delete().eq("patient_id", id);
-    await supabase.from("labs").delete().eq("patient_id", id);
-    await supabase.from("notes").delete().eq("patient_id", id);
-    await supabase.from("patients").delete().eq("id", id);
+    await supabase.from("round_logs").delete().eq("patient_id", id).eq("team_id", CURRENT_TEAM_ID);
+    await supabase.from("labs").delete().eq("patient_id", id).eq("team_id", CURRENT_TEAM_ID);
+    await supabase.from("notes").delete().eq("patient_id", id).eq("team_id", CURRENT_TEAM_ID);
+    await supabase.from("patients").delete().eq("id", id).eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath("/");
     redirect("/");
@@ -639,7 +658,8 @@ PLAN R++:
       .from("notes")
       .delete()
       .eq("id", noteId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath(`/patients/${id}`);
   }
@@ -655,7 +675,8 @@ PLAN R++:
       .from("labs")
       .delete()
       .eq("id", labId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath(`/patients/${id}`);
   }
@@ -671,7 +692,8 @@ PLAN R++:
       .from("patient_images")
       .delete()
       .eq("id", imageId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     revalidatePath(`/patients/${id}`);
   }
@@ -687,7 +709,8 @@ PLAN R++:
       .from("patient_tasks")
       .delete()
       .eq("id", taskId)
-      .eq("patient_id", id);
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
 
     if (error) {
       console.error("Error al eliminar pendiente:", error.message);
