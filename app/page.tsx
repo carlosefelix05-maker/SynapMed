@@ -269,6 +269,21 @@ export default async function Home({
     new Set(patientSummaries.map((item) => item.patient.subspecialty || "Medicina Interna"))
   ).sort();
 
+  const censusBySubspecialty = availableSubspecialties.map((subspecialty) => {
+    const summaries = patientSummaries.filter(
+      (item) => (item.patient.subspecialty || "Medicina Interna") === subspecialty
+    );
+
+    return {
+      subspecialty,
+      total: summaries.length,
+      critical: summaries.filter((item) => item.priority === "Crítico").length,
+      high: summaries.filter((item) => item.priority === "Alta").length,
+      stable: summaries.filter((item) => item.priority === "Estable").length,
+      pending: summaries.filter((item) => !patientsWithRoundCompletedToday.has(item.patient.id)).length,
+    };
+  });
+
   const criticalAlertsMap = new Map<string, { bed: string | null; name: string; labs: string }>();
 
   for (const item of patientSummaries.filter((summary) => summary.priority === "Crítico")) {
@@ -323,12 +338,12 @@ export default async function Home({
             Conectando la inteligencia médica
           </p>
 
-          {["Synapse", "Rounds", "Patients", "Notes", "Calc", "Drugs", "Protocols"].map(
+          {["Synapse", "Census", "Rounds", "Patients", "Notes", "Calc", "Drugs", "Protocols"].map(
             (item) => (
               <button
                 key={item}
                 className={`mb-2 w-full rounded-xl px-4 py-3 text-left text-sm ${
-                  item === "Rounds"
+                  item === "Census"
                     ? "bg-cyan-400 font-semibold text-slate-950"
                     : "text-slate-300 hover:bg-white/10"
                 }`}
@@ -357,6 +372,92 @@ export default async function Home({
           </header>
 
           <section className="mb-6 rounded-3xl bg-white/10 p-6">
+            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-2xl font-bold">📊 Census</h3>
+                <p className="text-sm text-slate-400">
+                  Vista global administrativa del servicio
+                </p>
+              </div>
+
+              <Link
+                href="/patients/new"
+                className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
+              >
+                + Nuevo paciente
+              </Link>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Total hospitalizados</p>
+                <p className="mt-2 text-3xl font-bold text-cyan-300">{patientSummaries.length}</p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Críticos</p>
+                <p className="mt-2 text-3xl font-bold text-red-400">
+                  {patientSummaries.filter((item) => item.priority === "Crítico").length}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Sin labs</p>
+                <p className="mt-2 text-3xl font-bold text-amber-300">
+                  {patientSummaries.filter((item) => !item.lab).length}
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-[#071A2F] p-4">
+                <p className="text-sm text-slate-400">Pendientes de pase</p>
+                <p className="mt-2 text-3xl font-bold text-green-300">
+                  {patientSummaries.filter((item) => !patientsWithRoundCompletedToday.has(item.patient.id)).length}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {censusBySubspecialty.map((item) => (
+                <Link
+                  key={item.subspecialty}
+                  href={`/?subspecialty=${encodeURIComponent(item.subspecialty)}`}
+                  className="rounded-2xl border border-white/10 bg-[#071A2F] p-4 transition hover:bg-white/10"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-lg font-bold text-white">{item.subspecialty}</p>
+                      <p className="mt-1 text-sm text-slate-400">{item.total} paciente(s)</p>
+                    </div>
+
+                    <span className="rounded-full bg-cyan-400/15 px-3 py-1 text-xs font-semibold text-cyan-300">
+                      Abrir pase
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+                    <div className="rounded-xl bg-red-400/10 p-2 text-red-300">
+                      <p className="font-bold">{item.critical}</p>
+                      <p>Crít</p>
+                    </div>
+                    <div className="rounded-xl bg-amber-300/10 p-2 text-amber-300">
+                      <p className="font-bold">{item.high}</p>
+                      <p>Alta</p>
+                    </div>
+                    <div className="rounded-xl bg-green-300/10 p-2 text-green-300">
+                      <p className="font-bold">{item.stable}</p>
+                      <p>Est</p>
+                    </div>
+                    <div className="rounded-xl bg-white/10 p-2 text-slate-300">
+                      <p className="font-bold">{item.pending}</p>
+                      <p>Pend</p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          <section className="mb-6 rounded-3xl bg-white/10 p-6">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-bold">🏥 Rounds</h3>
@@ -366,13 +467,6 @@ export default async function Home({
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/patients/new"
-                  className="rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-300"
-                >
-                  + Nuevo paciente
-                </Link>
-
                 <a
                   href={nextPatientForRounds ? `/patients/${nextPatientForRounds}${subspecialtyQuery}` : "#"}
                   className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
