@@ -1012,6 +1012,149 @@ PLAN R++:
           <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-1">
               <h2 className="text-2xl font-bold text-cyan-300">
+                ✅ Pendientes del pase
+              </h2>
+              <p className="text-sm text-slate-400">
+                Tareas generadas durante el pase: indicaciones, curaciones, interconsultas y pendientes clínicos
+              </p>
+            </div>
+
+            <form action={createPatientTask} className="mb-4 rounded-2xl bg-[#071A2F] p-4">
+              <p className="mb-3 font-semibold text-cyan-300">Agregar pendiente</p>
+
+              <div className="space-y-3">
+                <textarea
+                  name="title"
+                  rows={4}
+                  placeholder="Ej. Actualizar indicaciones, realizar curación, solicitar EKG"
+                  className="min-h-[120px] w-full resize-y rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-white outline-none placeholder:text-slate-500"
+                />
+
+                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                  <select
+                    name="category"
+                    defaultValue="General"
+                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
+                  >
+                    <option value="General">General</option>
+                    <option value="Indicaciones">Indicaciones</option>
+                    <option value="Curación">Curación</option>
+                    <option value="Laboratorio">Laboratorio</option>
+                    <option value="Imagen">Imagen</option>
+                    <option value="Interconsulta">Interconsulta</option>
+                    <option value="Procedimiento">Procedimiento</option>
+                  </select>
+
+                  <select
+                    name="task_scope"
+                    defaultValue="Guardia"
+                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
+                  >
+                    <option value="Guardia">Guardia</option>
+                    <option value="Pase">Pase</option>
+                    <option value="Seguimiento">Seguimiento</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Interconsulta">Interconsulta</option>
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {smartTasks.length > 0 ? (
+              <div className="space-y-3">
+                {smartTasks.map((task) => {
+                  const isDone = task.status === "Realizado";
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
+                        isDone ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs ${
+                                isDone
+                                  ? "bg-green-300/10 text-green-300"
+                                  : "bg-amber-300/10 text-amber-300"
+                              }`}
+                            >
+                              {task.status}
+                            </span>
+                            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+                              {task.category || "General"}
+                            </span>
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                              {task.task_scope || "Guardia"}
+                            </span>
+                          </div>
+
+                          <p className={`mt-3 font-semibold text-white ${isDone ? "line-through" : ""}`}>
+                            {task.title}
+                          </p>
+
+                          {task.completed_at ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Realizado: {new Date(task.completed_at).toLocaleString("es-MX")}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <form action={updatePatientTaskStatus}>
+                            <input type="hidden" name="taskId" value={task.id} />
+                            <input
+                              type="hidden"
+                              name="status"
+                              value={isDone ? "Pendiente" : "Realizado"}
+                            />
+                            <button
+                              type="submit"
+                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                                isDone
+                                  ? "bg-white/10 text-slate-200 hover:bg-white/20"
+                                  : "bg-green-300 text-slate-950 hover:bg-green-200"
+                              }`}
+                            >
+                              {isDone ? "Marcar pendiente" : "Marcar realizado"}
+                            </button>
+                          </form>
+
+                          <form action={deletePatientTask}>
+                            <input type="hidden" name="taskId" value={task.id} />
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+                            >
+                              Eliminar
+                            </button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin pendientes registrados.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-cyan-300">
                 📅 Timeline clínico
               </h2>
               <p className="text-sm text-slate-400">
@@ -1177,150 +1320,7 @@ PLAN R++:
             )}
           </section>
 
-          <section className="rounded-3xl bg-white/10 p-6">
-            <div className="mb-4 flex flex-col gap-1">
-              <h2 className="text-2xl font-bold text-cyan-300">
-                ✅ Pendientes del pase
-              </h2>
-              <p className="text-sm text-slate-400">
-                Tareas generadas durante el pase: indicaciones, curaciones, interconsultas y pendientes clínicos
-              </p>
-            </div>
-
-            <form action={createPatientTask} className="mb-4 rounded-2xl bg-[#071A2F] p-4">
-              <p className="mb-3 font-semibold text-cyan-300">Agregar pendiente</p>
-
-              <div className="space-y-3">
-                <textarea
-                  name="title"
-                  rows={4}
-                  placeholder="Ej. Actualizar indicaciones, realizar curación, solicitar EKG"
-                  className="min-h-[120px] w-full resize-y rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-white outline-none placeholder:text-slate-500"
-                />
-
-                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-                  <select
-                    name="category"
-                    defaultValue="General"
-                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
-                  >
-                    <option value="General">General</option>
-                    <option value="Indicaciones">Indicaciones</option>
-                    <option value="Curación">Curación</option>
-                    <option value="Laboratorio">Laboratorio</option>
-                    <option value="Imagen">Imagen</option>
-                    <option value="Interconsulta">Interconsulta</option>
-                    <option value="Procedimiento">Procedimiento</option>
-                  </select>
-
-                  <select
-                    name="task_scope"
-                    defaultValue="Guardia"
-                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
-                  >
-                    <option value="Guardia">Guardia</option>
-                    <option value="Pase">Pase</option>
-                    <option value="Seguimiento">Seguimiento</option>
-                    <option value="Alta">Alta</option>
-                    <option value="Interconsulta">Interconsulta</option>
-                  </select>
-
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
-                  >
-                    Agregar
-                  </button>
-                </div>
-              </div>
-            </form>
-
-            {smartTasks.length > 0 ? (
-              <div className="space-y-3">
-                {smartTasks.map((task) => {
-                  const isDone = task.status === "Realizado";
-
-                  return (
-                    <div
-                      key={task.id}
-                      className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
-                        isDone ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs ${
-                                isDone
-                                  ? "bg-green-300/10 text-green-300"
-                                  : "bg-amber-300/10 text-amber-300"
-                              }`}
-                            >
-                              {task.status}
-                            </span>
-                            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
-                              {task.category || "General"}
-                            </span>
-                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
-                              {task.task_scope || "Guardia"}
-                            </span>
-                          </div>
-
-                          <p className={`mt-3 font-semibold text-white ${isDone ? "line-through" : ""}`}>
-                            {task.title}
-                          </p>
-
-                          {task.completed_at ? (
-                            <p className="mt-1 text-xs text-slate-500">
-                              Realizado: {new Date(task.completed_at).toLocaleString("es-MX")}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <form action={updatePatientTaskStatus}>
-                            <input type="hidden" name="taskId" value={task.id} />
-                            <input
-                              type="hidden"
-                              name="status"
-                              value={isDone ? "Pendiente" : "Realizado"}
-                            />
-                            <button
-                              type="submit"
-                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-                                isDone
-                                  ? "bg-white/10 text-slate-200 hover:bg-white/20"
-                                  : "bg-green-300 text-slate-950 hover:bg-green-200"
-                              }`}
-                            >
-                              {isDone ? "Marcar pendiente" : "Marcar realizado"}
-                            </button>
-                          </form>
-
-                          <form action={deletePatientTask}>
-                            <input type="hidden" name="taskId" value={task.id} />
-                            <button
-                              type="submit"
-                              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
-                            >
-                              Eliminar
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-slate-400">
-                Sin pendientes registrados.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-3xl bg-white/10 p-6">
+          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
             <h2 className="mb-4 text-2xl font-bold text-cyan-300">Laboratorios</h2>
 
             <p className="mb-6 text-slate-300">
