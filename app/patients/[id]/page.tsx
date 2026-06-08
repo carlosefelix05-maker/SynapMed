@@ -55,6 +55,12 @@ export default async function PatientPage({
     .eq("patient_id", id)
     .order("created_at", { ascending: false });
 
+  const { data: patientImages } = await supabase
+    .from("patient_images")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false });
+
   const { data: allPatients } = await supabase
     .from("patients")
     .select("id, full_name, bed, subspecialty")
@@ -824,6 +830,59 @@ PLAN R++:
             ) : (
               <p className="text-slate-400">
                 Sin eventos clínicos registrados todavía.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-cyan-300">
+                  📷 Estudios e imágenes
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Rx, TAC, ECG, heridas, reportes y otros archivos clínicos
+                </p>
+              </div>
+
+              <Link
+                href={`/patients/${id}/images/new`}
+                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                + Subir imagen
+              </Link>
+            </div>
+
+            {patientImages && patientImages.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {patientImages.map((image) => (
+                  <Link
+                    key={image.id}
+                    href={`/patients/${id}/images/${image.id}`}
+                    className="overflow-hidden rounded-2xl border border-white/10 bg-[#071A2F] transition hover:bg-white/10"
+                  >
+                    <div className="aspect-video bg-black/30">
+                      <img
+                        src={image.image_url}
+                        alt={image.title || "Imagen clínica"}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+
+                    <div className="p-4">
+                      <p className="font-semibold text-white">
+                        {image.title || "Imagen clínica"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {image.study_type || "Estudio"} · {new Date(image.created_at).toLocaleDateString("es-MX")}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin imágenes clínicas registradas.
               </p>
             )}
           </section>
