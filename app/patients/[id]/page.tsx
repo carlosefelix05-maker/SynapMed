@@ -61,6 +61,12 @@ export default async function PatientPage({
     .eq("patient_id", id)
     .order("created_at", { ascending: false });
 
+  const { data: patientTasks } = await supabase
+    .from("patient_tasks")
+    .select("*")
+    .eq("patient_id", id)
+    .order("created_at", { ascending: false });
+
   const { data: allPatients } = await supabase
     .from("patients")
     .select("id, full_name, bed, subspecialty")
@@ -228,6 +234,55 @@ PLAN R++:
       .update({ priority })
       .eq("id", problemId)
       .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+
+  async function createPatientTask(formData: FormData) {
+    "use server";
+
+    const title = String(formData.get("title") ?? "").trim();
+    const category = String(formData.get("category") ?? "").trim();
+
+    if (!title) return;
+
+    const { error } = await supabase.from("patient_tasks").insert({
+      patient_id: id,
+      title,
+      category: category || null,
+      status: "Pendiente",
+    });
+
+    if (error) {
+      console.error("Error al guardar pendiente:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function updatePatientTaskStatus(formData: FormData) {
+    "use server";
+
+    const taskId = String(formData.get("taskId") ?? "").trim();
+    const status = String(formData.get("status") ?? "Pendiente").trim();
+
+    if (!taskId) return;
+
+    const { error } = await supabase
+      .from("patient_tasks")
+      .update({
+        status,
+        completed_at: status === "Realizado" ? new Date().toISOString() : null,
+      })
+      .eq("id", taskId)
+      .eq("patient_id", id);
+
+    if (error) {
+      console.error("Error al actualizar pendiente:", error.message);
+      return;
+    }
 
     revalidatePath(`/patients/${id}`);
   }
@@ -537,6 +592,15 @@ PLAN R++:
     const priorityB = priorityOrder[b.priority] ?? 9;
 
     if (priorityA !== priorityB) return priorityA - priorityB;
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const smartTasks = [...(patientTasks ?? [])].sort((a, b) => {
+    if (a.status !== b.status) {
+      if (a.status === "Pendiente") return -1;
+      if (b.status === "Pendiente") return 1;
+    }
 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -983,6 +1047,117 @@ PLAN R++:
             ) : (
               <p className="text-slate-400">
                 Sin problemas registrados.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-white/10 p-6">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-cyan-300">
+                ✅ Pendientes del pase
+              </h2>
+              <p className="text-sm text-slate-400">
+                Tareas generadas durante el pase: indicaciones, curaciones, interconsultas y pendientes clínicos
+              </p>
+            </div>
+
+            <form action={createPatientTask} className="mb-4 rounded-2xl bg-[#071A2F] p-4">
+              <p className="mb-3 font-semibold text-cyan-300">Agregar pendiente</p>
+
+              <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+                <input
+                  name="title"
+                  placeholder="Ej. Actualizar indicaciones, realizar curación, solicitar EKG"
+                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500"
+                />
+
+                <select
+                  name="category"
+                  defaultValue="General"
+                  className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
+                >
+                  <option value="General">General</option>
+                  <option value="Indicaciones">Indicaciones</option>
+                  <option value="Curación">Curación</option>
+                  <option value="Laboratorio">Laboratorio</option>
+                  <option value="Imagen">Imagen</option>
+                  <option value="Interconsulta">Interconsulta</option>
+                  <option value="Procedimiento">Procedimiento</option>
+                </select>
+
+                <button
+                  type="submit"
+                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                >
+                  Agregar
+                </button>
+              </div>
+            </form>
+
+            {smartTasks.length > 0 ? (
+              <div className="space-y-3">
+                {smartTasks.map((task) => {
+                  const isDone = task.status === "Realizado";
+
+                  return (
+                    <div
+                      key={task.id}
+                      className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
+                        isDone ? "opacity-60" : ""
+                      }`}
+                    >
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full px-3 py-1 text-xs ${
+                              isDone
+                                ? "bg-green-300/10 text-green-300"
+                                : "bg-amber-300/10 text-amber-300"
+                            }`}>
+                              {task.status}
+                            </span>
+                            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+                              {task.category || "General"}
+                            </span>
+                          </div>
+
+                          <p className={`mt-3 font-semibold text-white ${isDone ? "line-through" : ""}`}>
+                            {task.title}
+                          </p>
+
+                          {task.completed_at ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              Realizado: {new Date(task.completed_at).toLocaleString("es-MX")}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <form action={updatePatientTaskStatus}>
+                          <input type="hidden" name="taskId" value={task.id} />
+                          <input
+                            type="hidden"
+                            name="status"
+                            value={isDone ? "Pendiente" : "Realizado"}
+                          />
+                          <button
+                            type="submit"
+                            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                              isDone
+                                ? "bg-white/10 text-slate-200 hover:bg-white/20"
+                                : "bg-green-300 text-slate-950 hover:bg-green-200"
+                            }`}
+                          >
+                            {isDone ? "Marcar pendiente" : "Marcar realizado"}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin pendientes registrados.
               </p>
             )}
           </section>
