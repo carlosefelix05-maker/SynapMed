@@ -23,6 +23,7 @@ export default async function EditPatientPage({
     const bed = String(formData.get("bed") ?? "").trim();
     const ageValue = String(formData.get("age") ?? "").trim();
     const sex = String(formData.get("sex") ?? "").trim();
+    const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
 
     if (!full_name) {
@@ -36,6 +37,7 @@ export default async function EditPatientPage({
         bed: bed || null,
         age: ageValue ? Number(ageValue) : null,
         sex: sex || null,
+        subspecialty: subspecialty || null,
         diagnosis: diagnosis || null,
       })
       .eq("id", id);
@@ -114,6 +116,26 @@ export default async function EditPatientPage({
                   <option value="Femenino">Femenino</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-400">Subespecialidad</label>
+              <select
+                name="subspecialty"
+                defaultValue={patient.subspecialty || "Medicina Interna"}
+                className="w-full rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-white outline-none"
+              >
+                <option value="Medicina Interna">Medicina Interna</option>
+                <option value="Cardiología">Cardiología</option>
+                <option value="Nefrología">Nefrología</option>
+                <option value="Neumología">Neumología</option>
+                <option value="Gastroenterología">Gastroenterología</option>
+                <option value="Endocrinología">Endocrinología</option>
+                <option value="Hematología">Hematología</option>
+                <option value="Terapia Intensiva">Terapia Intensiva</option>
+                <option value="Neurología">Neurología</option>
+                <option value="Infectología">Infectología</option>
+              </select>
             </div>
 
             <div>

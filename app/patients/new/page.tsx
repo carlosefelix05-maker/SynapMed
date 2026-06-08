@@ -12,6 +12,7 @@ export default function NewPatientPage() {
     const ageValue = String(formData.get("age") ?? "").trim();
     const sex = String(formData.get("sex") ?? "").trim();
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
+    const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const priority = String(formData.get("priority") ?? "").trim();
 
     if (!full_name || !bed) return;
@@ -22,6 +23,7 @@ export default function NewPatientPage() {
       age: ageValue ? Number(ageValue) : null,
       sex: sex || null,
       diagnosis: diagnosis || null,
+      subspecialty: subspecialty || null,
       priority: priority || "Estable",
     });
 
@@ -63,6 +65,19 @@ export default function NewPatientPage() {
                 placeholder="Diagnóstico principal"
                 className="rounded-xl bg-[#071A2F] px-4 py-3 text-white md:col-span-2"
               />
+
+              <select name="subspecialty" defaultValue="Medicina Interna" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white">
+                <option value="Medicina Interna">Medicina Interna</option>
+                <option value="Cardiología">Cardiología</option>
+                <option value="Nefrología">Nefrología</option>
+                <option value="Neumología">Neumología</option>
+                <option value="Gastroenterología">Gastroenterología</option>
+                <option value="Endocrinología">Endocrinología</option>
+                <option value="Hematología">Hematología</option>
+                <option value="Terapia Intensiva">Terapia Intensiva</option>
+                <option value="Neurología">Neurología</option>
+                <option value="Infectología">Infectología</option>
+              </select>
 
               <select name="priority" defaultValue="Estable" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white">
                 <option value="Estable">Estable</option>

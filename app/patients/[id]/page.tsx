@@ -572,7 +572,7 @@ PLAN:`;
 
           <p className="mt-4 text-xl text-slate-300">{patient.diagnosis}</p>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-4">
             <div className="rounded-2xl bg-[#071A2F] p-4">
               <p className="text-slate-400">Edad</p>
               <p className="text-2xl font-bold">{patient.age}</p>
@@ -581,6 +581,11 @@ PLAN:`;
             <div className="rounded-2xl bg-[#071A2F] p-4">
               <p className="text-slate-400">Sexo</p>
               <p className="text-2xl font-bold">{patient.sex}</p>
+            </div>
+
+            <div className="rounded-2xl bg-[#071A2F] p-4">
+              <p className="text-slate-400">Subespecialidad</p>
+              <p className="text-2xl font-bold">{patient.subspecialty || "Medicina Interna"}</p>
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4">
