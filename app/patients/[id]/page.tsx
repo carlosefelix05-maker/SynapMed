@@ -933,7 +933,7 @@ PLAN R++:
                         </p>
                       </div>
 
-                                            <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {item.href ? (
                           <Link
                             href={item.href}
@@ -1008,159 +1008,6 @@ PLAN R++:
             ) : (
               <p className="text-slate-400">
                 Sin eventos clínicos registrados todavía.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
-            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-cyan-300">
-                  📷 Estudios e imágenes
-                </h2>
-                <p className="text-sm text-slate-400">
-                  Rx, TAC, ECG, heridas, reportes y otros archivos clínicos
-                </p>
-              </div>
-
-              <Link
-                href={`/patients/${id}/images/new`}
-                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
-              >
-                + Subir imagen
-              </Link>
-            </div>
-
-            {patientImages && patientImages.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {patientImages.map((image) => (
-                  <Link
-                    key={image.id}
-                    href={`/patients/${id}/images/${image.id}`}
-                    className="overflow-hidden rounded-2xl border border-white/10 bg-[#071A2F] transition hover:bg-white/10"
-                  >
-                    <div className="aspect-video bg-black/30">
-                      <img
-                        src={image.image_url}
-                        alt={image.title || "Imagen clínica"}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-
-                    <div className="p-4">
-                      <p className="font-semibold text-white">
-                        {image.title || "Imagen clínica"}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {image.study_type || "Estudio"} · {new Date(image.created_at).toLocaleDateString("es-MX")}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-400">
-                Sin imágenes clínicas registradas.
-              </p>
-            )}
-          </section>
-          <section className="rounded-3xl bg-white/10 p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-cyan-300">
-                🧠 Problemas activos inteligentes
-              </h2>
-
-              <Link
-                href={`/patients/${id}/problems/new`}
-                className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950"
-              >
-                + Nuevo problema
-              </Link>
-            </div>
-
-            {smartProblems.length > 0 ? (
-              <div className="space-y-3">
-                {smartProblems.map((problem) => {
-                  const isResolved = problem.status === "Resuelto";
-                  const nextPriority =
-                    problem.priority === "Crítico"
-                      ? "Crítico"
-                      : problem.priority === "Alta"
-                        ? "Crítico"
-                        : problem.priority === "Media"
-                          ? "Alta"
-                          : "Media";
-
-                  return (
-                    <div
-                      key={problem.id}
-                      className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
-                        isResolved ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-red-400/10 px-3 py-1 text-xs text-red-300">
-                              {problem.priority}
-                            </span>
-
-                            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
-                              {problem.status}
-                            </span>
-                          </div>
-
-                          <p className="mt-3 font-semibold text-white">
-                            {problem.title}
-                          </p>
-
-                          {problem.comments ? (
-                            <p className="mt-2 text-sm text-slate-400">
-                              {problem.comments}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <form action={updateProblemPriority}>
-                            <input type="hidden" name="problemId" value={problem.id} />
-                            <input type="hidden" name="priority" value={nextPriority} />
-                            <button
-                              type="submit"
-                              disabled={isResolved || problem.priority === "Crítico"}
-                              className="rounded-xl bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              Subir prioridad
-                            </button>
-                          </form>
-
-                          <form action={updateProblemStatus}>
-                            <input type="hidden" name="problemId" value={problem.id} />
-                            <input
-                              type="hidden"
-                              name="status"
-                              value={isResolved ? "Activo" : "Resuelto"}
-                            />
-                            <button
-                              type="submit"
-                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
-                                isResolved
-                                  ? "bg-green-300 text-slate-950"
-                                  : "bg-white/10 text-slate-200 hover:bg-white/20"
-                              }`}
-                            >
-                              {isResolved ? "Reactivar" : "Resolver"}
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-slate-400">
-                Sin problemas registrados.
               </p>
             )}
           </section>
@@ -1308,64 +1155,29 @@ PLAN R++:
             )}
           </section>
 
-
-
           <section className="rounded-3xl bg-white/10 p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-cyan-300">
-                  📈 Tendencias de laboratorio
-                </h2>
-                <p className="text-sm text-slate-400">
-                  Últimos {recentLabs.length} registro(s) capturados
-                </p>
-              </div>
-            </div>
+            <h2 className="mb-4 text-2xl font-bold text-cyan-300">Laboratorios</h2>
 
-            <div className="mb-5 grid grid-cols-1 gap-2 text-slate-300 md:grid-cols-2">
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("cr", "Cr")}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("hb", "Hb")}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("leu", "Leu")}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("na", "Na")}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("k", "K")}</div>
-              <div className="rounded-xl bg-[#071A2F] p-3">{trendText("glu", "Glu")}</div>
-            </div>
+            <p className="mb-6 text-slate-300">
+              {labsResumen || "Sin laboratorios registrados"}
+            </p>
 
-            {recentLabs.length > 0 ? (
-              <div className="mb-5 overflow-hidden rounded-2xl border border-white/10">
-                <div className="grid grid-cols-7 bg-white/10 px-3 py-2 text-xs font-semibold text-slate-300">
-                  <span>Fecha</span>
-                  <span>Cr</span>
-                  <span>Hb</span>
-                  <span>Leu</span>
-                  <span>Na</span>
-                  <span>K</span>
-                  <span>Glu</span>
-                </div>
+            {labHistory && labHistory.length > 0 ? (
+              <div className="mb-6 space-y-2">
+                <p className="text-sm font-semibold text-cyan-300">Historial reciente</p>
 
-                {[...(labHistory ?? [])].map((lab) => (
-                  <div key={lab.id} className="grid grid-cols-7 border-t border-white/10 px-3 py-2 text-xs text-slate-300">
-                    <span>{labDate(lab)}</span>
-                    <span>{lab.cr || "-"}</span>
-                    <span>{lab.hb || "-"}</span>
-                    <span>{lab.leu || "-"}</span>
-                    <span>{lab.na || "-"}</span>
-                    <span>{lab.k || "-"}</span>
-                    <span>{lab.glu || "-"}</span>
+                {labHistory.map((lab) => (
+                  <div key={lab.id} className="rounded-xl bg-[#071A2F] p-3 text-sm text-slate-300">
+                    <span className="text-cyan-300">{labDate(lab)}:</span> {timelineLabs(lab)}
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="mb-5 text-sm text-slate-400">Sin laboratorios capturados.</p>
-            )}
+            ) : null}
 
-            <form action={createLabs} className="rounded-2xl bg-[#071A2F] p-4">
-              <p className="mb-3 font-semibold text-cyan-300">Capturar laboratorios</p>
+            <form action={createLabs} className="space-y-4 rounded-2xl bg-[#071A2F] p-4">
+              <p className="font-semibold text-cyan-300">Capturar laboratorios</p>
 
-              <div className="mb-4">
-                <label className="mb-2 block text-sm text-slate-400">
-                  Pegar laboratorios
-                </label>
+              <div>
                 <textarea
                   name="rawLabs"
                   placeholder="Ejemplo: GLU 92 URE 102 CRE 6.0 NA 140 K 4.2 LEU 12.1 HB 9.8 PLAQ 210"
@@ -1395,31 +1207,6 @@ PLAN R++:
               </button>
             </form>
           </section>
-
-          <section className="rounded-3xl bg-white/10 p-6">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-              Pendientes
-            </h2>
-
-            <ul className="space-y-2 text-slate-300">
-              <li>☐ Revisión por pase de visita</li>
-              <li>☐ Actualizar laboratorios</li>
-              <li>☐ Definir plan del día</li>
-            </ul>
-          </section>
-
-          <section className="rounded-3xl bg-white/10 p-6">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">
-              Plan del día
-            </h2>
-
-            <ul className="space-y-2 text-slate-300">
-              <li>• Continuar vigilancia clínica</li>
-              <li>• Revalorar según evolución</li>
-              <li>• Documentar Progress Note</li>
-            </ul>
-          </section>
-
         </div>
       </div>
     </main>
