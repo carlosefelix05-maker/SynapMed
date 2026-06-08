@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 import LogoutButton from "@/app/components/LogoutButton";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
   const [checking, setChecking] = useState(true);
 
   const isPublicRoute = pathname === "/login";
