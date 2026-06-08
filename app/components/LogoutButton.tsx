@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 type UserContext = {
   name: string;
@@ -13,6 +13,7 @@ type UserContext = {
 
 export default function LogoutButton() {
   const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
 
