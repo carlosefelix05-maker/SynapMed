@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -16,6 +16,7 @@ export default async function PatientPage({
   searchParams?: Promise<{ subspecialty?: string }>;
 }) {
   const { id } = await params;
+  const supabase = await createClient();
   const query = await searchParams;
   const selectedSubspecialty = query?.subspecialty || "Todas";
   const subspecialtyQuery =
@@ -83,6 +84,7 @@ export default async function PatientPage({
 
   async function createNote(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const title = String(formData.get("title") ?? "").trim();
     const content = String(formData.get("content") ?? "").trim();
@@ -104,6 +106,7 @@ export default async function PatientPage({
 
   async function createSynapseNote() {
     "use server";
+    const supabase = await createClient();
 
     const { data: patientData } = await supabase
       .from("patients")
@@ -216,6 +219,7 @@ PLAN R++:
 
   async function updateProblemStatus(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const problemId = String(formData.get("problemId") ?? "").trim();
     const status = String(formData.get("status") ?? "Activo").trim();
@@ -237,6 +241,7 @@ PLAN R++:
 
   async function updateProblemPriority(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const problemId = String(formData.get("problemId") ?? "").trim();
     const priority = String(formData.get("priority") ?? "Media").trim();
@@ -256,6 +261,7 @@ PLAN R++:
 
   async function createPatientTask(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const title = String(formData.get("title") ?? "").trim();
     const category = String(formData.get("category") ?? "").trim();
@@ -282,6 +288,7 @@ PLAN R++:
 
   async function updatePatientTaskStatus(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const taskId = String(formData.get("taskId") ?? "").trim();
     const status = String(formData.get("status") ?? "Pendiente").trim();
@@ -309,6 +316,7 @@ PLAN R++:
 
   async function createLabs(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const rawLabs = String(formData.get("rawLabs") ?? "").trim();
 
@@ -372,6 +380,7 @@ PLAN R++:
 
   async function completeRound(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const nextPatientId = String(formData.get("nextPatientId") ?? "").trim();
 
@@ -392,6 +401,7 @@ PLAN R++:
 
   async function dischargePatient() {
     "use server";
+    const supabase = await createClient();
 
     await supabase.from("round_logs").delete().eq("patient_id", id).eq("team_id", CURRENT_TEAM_ID);
     await supabase.from("labs").delete().eq("patient_id", id).eq("team_id", CURRENT_TEAM_ID);
@@ -652,6 +662,7 @@ PLAN R++:
 
   async function deleteTimelineNote(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const noteId = String(formData.get("noteId") ?? "").trim();
 
@@ -669,6 +680,7 @@ PLAN R++:
 
   async function deleteTimelineLab(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const labId = String(formData.get("labId") ?? "").trim();
 
@@ -686,6 +698,7 @@ PLAN R++:
 
   async function deleteTimelineImage(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const imageId = String(formData.get("imageId") ?? "").trim();
 
@@ -703,6 +716,7 @@ PLAN R++:
 
   async function deletePatientTask(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const taskId = String(formData.get("taskId") ?? "").trim();
 
