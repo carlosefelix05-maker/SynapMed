@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 function formatLabs(lab: any) {
   if (!lab) return "Sin laboratorios recientes capturados.";
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
       .from("patients")
       .select("*")
       .eq("id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
       .single();
 
     if (!patient) {
@@ -66,6 +68,7 @@ export async function POST(request: Request) {
       .from("labs")
       .select("*")
       .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -74,6 +77,7 @@ export async function POST(request: Request) {
       .from("notes")
       .select("id, title, type, content, created_at")
       .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
       .order("created_at", { ascending: false })
       .limit(8);
 
@@ -81,6 +85,7 @@ export async function POST(request: Request) {
       .from("problems")
       .select("id, title, status, priority, comments, created_at, started_at, resolved_at")
       .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
       .order("created_at", { ascending: false });
 
     const priorityOrder: Record<string, number> = {
@@ -235,6 +240,7 @@ Organiza el plan por cada problema activo prioritario.`;
       .from("notes")
       .insert({
         patient_id: patientId,
+        team_id: CURRENT_TEAM_ID,
         type: "Evolución generada",
         title: `Evolución generada ${new Date().toLocaleDateString("es-MX")}`,
         content,
