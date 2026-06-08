@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import NoteTemplateSelector from "@/app/components/NoteTemplateSelector";
 import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
+import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 
 export default async function PatientPage({
   params,
@@ -633,6 +634,8 @@ PLAN:`;
               </span>
 
               <EvolutionGeneratorButton patientId={id} />
+
+              <VpoGeneratorButton patientId={id} />
 
               <SynapseProButton
   patientId={id}
