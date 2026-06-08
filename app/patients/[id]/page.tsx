@@ -242,18 +242,18 @@ PLAN R++:
     "use server";
 
     const title = String(formData.get("title") ?? "").trim();
-const category = String(formData.get("category") ?? "").trim();
-const taskScope = String(formData.get("task_scope") ?? "Guardia").trim();
+    const category = String(formData.get("category") ?? "").trim();
+    const taskScope = String(formData.get("task_scope") ?? "Guardia").trim();
 
-if (!title) return;
+    if (!title) return;
 
-const { error } = await supabase.from("patient_tasks").insert({
-  patient_id: id,
-  title,
-  category: category || null,
-  task_scope: taskScope || "Guardia",
-  status: "Pendiente",
-});
+    const { error } = await supabase.from("patient_tasks").insert({
+      patient_id: id,
+      title,
+      category: category || null,
+      task_scope: taskScope || "Guardia",
+      status: "Pendiente",
+    });
 
     if (error) {
       console.error("Error al guardar pendiente:", error.message);
@@ -352,23 +352,23 @@ const { error } = await supabase.from("patient_tasks").insert({
   }
 
   async function completeRound(formData: FormData) {
-  "use server";
+    "use server";
 
-  const nextPatientId = String(formData.get("nextPatientId") ?? "").trim();
+    const nextPatientId = String(formData.get("nextPatientId") ?? "").trim();
 
-  await supabase.from("round_logs").insert({
-    patient_id: id,
-  });
+    await supabase.from("round_logs").insert({
+      patient_id: id,
+    });
 
-  revalidatePath(`/patients/${id}`);
-  revalidatePath("/");
+    revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
 
-  if (nextPatientId) {
-    redirect(`/patients/${nextPatientId}${subspecialtyQuery}`);
+    if (nextPatientId) {
+      redirect(`/patients/${nextPatientId}${subspecialtyQuery}`);
+    }
+
+    redirect(`/${subspecialtyQuery}`);
   }
-
-  redirect(`/${subspecialtyQuery}`);
-}
 
   async function dischargePatient() {
     "use server";
@@ -706,11 +706,6 @@ const { error } = await supabase.from("patient_tasks").insert({
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-
-
-
-
-
   const patientList =
     selectedSubspecialty === "Todas"
       ? allPatients ?? []
@@ -771,14 +766,14 @@ const { error } = await supabase.from("patient_tasks").insert({
               Editar paciente
             </Link>
             <form action={completeRound}>
-  <input type="hidden" name="nextPatientId" value={nextPatient?.id || ""} />
-  <button
-    type="submit"
-    className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
-  >
-    ✓ Pase completado
-  </button>
-</form>
+              <input type="hidden" name="nextPatientId" value={nextPatient?.id || ""} />
+              <button
+                type="submit"
+                className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
+              >
+                ✓ Pase completado
+              </button>
+            </form>
             <form action={dischargePatient}>
               <button
                 type="submit"
@@ -839,13 +834,13 @@ const { error } = await supabase.from("patient_tasks").insert({
               <VpoGeneratorButton patientId={id} />
 
               <SynapseProButton
-  patientId={id}
-  patient={patient}
-  latestLabs={latestLabs}
-  labTrends={labHistory ?? []}
-  timeline={timelineItems}
-  notes={notes ?? []}
-/>
+                patientId={id}
+                patient={patient}
+                latestLabs={latestLabs}
+                labTrends={labHistory ?? []}
+                timeline={timelineItems}
+                notes={notes ?? []}
+              />
             </div>
           </div>
 
