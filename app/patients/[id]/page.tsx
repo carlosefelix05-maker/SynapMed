@@ -540,18 +540,41 @@ PLAN R++:
             ? "Alerta inflamatoria/infecciosa por leucocitosis."
             : "Sin criterios automáticos de alarma crítica por laboratorios.";
 
-  const synapseSummary = `${patient.sex || "Paciente"} de ${
-    patient.age || "edad no registrada"
-  } años, cama ${patient.bed || "sin cama"}, con diagnóstico principal: ${
-    patient.diagnosis || "no registrado"
-  }. ${synapsePriority} Últimos laboratorios: ${
-    labsResumen || "pendientes de captura"
-  }.`;
+  const activeProblemTitles = (problems ?? [])
+    .filter((problem) => problem.status !== "Resuelto")
+    .map((problem) => problem.title)
+    .filter(Boolean);
 
-  const synapseProblems = (patient.diagnosis ?? "")
+  const diagnosisProblemTitles = (patient.diagnosis ?? "")
     .split("/")
     .map((problem: string) => problem.trim())
     .filter(Boolean);
+
+  const synapseProblems =
+    activeProblemTitles.length > 0 ? activeProblemTitles : diagnosisProblemTitles;
+
+  const activeProblemText =
+    synapseProblems.length > 0 ? synapseProblems.join("; ") : "no registrado";
+
+  const realPendingTasks = (patientTasks ?? [])
+    .filter((task) => task.status !== "Realizado")
+    .map((task) => task.title)
+    .filter(Boolean);
+
+  const recentTimelineContext = timelineItems
+    .slice(0, 3)
+    .map((item) => `${item.type}: ${item.title}`)
+    .join(" | ");
+
+  const synapseSummary = `${patient.sex || "Paciente"} de ${
+    patient.age || "edad no registrada"
+  } años, cama ${patient.bed || "sin cama"}. Eje clínico actual: ${
+    activeProblemText
+  }. ${synapsePriority} Últimos laboratorios: ${
+    labsResumen || "pendientes de captura"
+  }. Pendientes activos: ${
+    realPendingTasks.length > 0 ? realPendingTasks.join("; ") : "sin pendientes registrados"
+  }.`;
 
   const synapseAlerts = [
     latestLabs?.cr && Number(latestLabs.cr) >= 2
@@ -578,6 +601,7 @@ PLAN R++:
   ].filter(Boolean) as string[];
 
   const synapsePendings = [
+    ...realPendingTasks,
     !latestLabs ? "Capturar laboratorios actuales" : null,
     latestLabs?.cr && Number(latestLabs.cr) >= 2
       ? "Vigilar función renal, balance hídrico y nefrotóxicos"
@@ -591,13 +615,17 @@ PLAN R++:
     latestLabs?.pct && Number(latestLabs.pct) >= 2
       ? "Revalorar foco infeccioso, cultivos y antibiótico"
       : null,
-    "Actualizar evolución y plan del día",
+    realPendingTasks.length === 0 ? "Actualizar evolución y plan del día" : null,
   ].filter(Boolean) as string[];
 
-  const synapseAnalysis = `Paciente con diagnóstico de ${
-    patient.diagnosis || "patología en estudio"
-  }, actualmente en seguimiento por Medicina Interna. ${synapsePriority} Se cuenta con últimos paraclínicos: ${
+  const synapseAnalysis = `Paciente en seguimiento por Medicina Interna con eje clínico actual basado en problemas activos: ${
+    activeProblemText
+  }. ${synapsePriority} Se cuenta con últimos paraclínicos: ${
     labsResumen || "pendientes de captura"
+  }. Pendientes activos: ${
+    realPendingTasks.length > 0 ? realPendingTasks.join("; ") : "sin pendientes registrados"
+  }. Contexto reciente del timeline: ${
+    recentTimelineContext || "sin eventos recientes"
   }. Se sugiere correlacionar con evolución clínica, exploración física, balance hídrico, respuesta al tratamiento y pendientes del día.`;
 
   async function deleteTimelineNote(formData: FormData) {
@@ -860,7 +888,7 @@ PLAN R++:
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-2xl bg-[#071A2F] p-4">
-              <h3 className="mb-3 font-semibold text-cyan-300">Problemas activos</h3>
+              <h3 className="mb-3 font-semibold text-cyan-300">Eje por problemas</h3>
 
               {synapseProblems.length > 0 ? (
                 <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-300">
@@ -888,7 +916,7 @@ PLAN R++:
             </div>
 
             <div className="rounded-2xl bg-[#071A2F] p-4">
-              <h3 className="mb-3 font-semibold text-amber-300">Pendientes sugeridos</h3>
+              <h3 className="mb-3 font-semibold text-amber-300">Pendientes reales / sugeridos</h3>
 
               <ul className="space-y-2 text-sm text-slate-300">
                 {synapsePendings.map((pending) => (
