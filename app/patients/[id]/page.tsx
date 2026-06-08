@@ -903,6 +903,111 @@ PLAN R++:
           </div>
         </section>
 
+        <section className="mt-6 rounded-3xl bg-white/10 p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cyan-300">
+                🧠 Problemas activos inteligentes
+              </h2>
+              <p className="text-sm text-slate-400">
+                Eje clínico del paciente para Synapse, evolución y plan por problemas
+              </p>
+            </div>
+
+            <Link
+              href={`/patients/${id}/problems/new`}
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              + Nuevo problema
+            </Link>
+          </div>
+
+          {smartProblems.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {smartProblems.map((problem) => {
+                const isResolved = problem.status === "Resuelto";
+                const nextPriority =
+                  problem.priority === "Crítico"
+                    ? "Crítico"
+                    : problem.priority === "Alta"
+                      ? "Crítico"
+                      : problem.priority === "Media"
+                        ? "Alta"
+                        : "Media";
+
+                return (
+                  <div
+                    key={problem.id}
+                    className={`rounded-2xl border border-white/10 bg-[#071A2F] p-4 ${
+                      isResolved ? "opacity-60" : ""
+                    }`}
+                  >
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-red-400/10 px-3 py-1 text-xs text-red-300">
+                            {problem.priority}
+                          </span>
+
+                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+                            {problem.status}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 font-semibold text-white">
+                          {problem.title}
+                        </p>
+
+                        {problem.comments ? (
+                          <p className="mt-2 text-sm text-slate-400">
+                            {problem.comments}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <form action={updateProblemPriority}>
+                          <input type="hidden" name="problemId" value={problem.id} />
+                          <input type="hidden" name="priority" value={nextPriority} />
+                          <button
+                            type="submit"
+                            className="rounded-xl bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-200"
+                          >
+                            Subir prioridad
+                          </button>
+                        </form>
+
+                        <form action={updateProblemStatus}>
+                          <input type="hidden" name="problemId" value={problem.id} />
+                          <input
+                            type="hidden"
+                            name="status"
+                            value={isResolved ? "Activo" : "Resuelto"}
+                          />
+                          <button
+                            type="submit"
+                            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                              isResolved
+                                ? "bg-green-300 text-slate-950 hover:bg-green-200"
+                                : "bg-white/10 text-slate-200 hover:bg-white/20"
+                            }`}
+                          >
+                            {isResolved ? "Reactivar" : "Resolver"}
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-slate-400">
+              Sin problemas activos registrados.
+            </p>
+          )}
+        </section>
+
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-1">
