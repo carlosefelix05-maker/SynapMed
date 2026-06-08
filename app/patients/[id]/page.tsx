@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
 import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
+import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
 
 export default async function PatientPage({
   params,
@@ -775,12 +776,12 @@ PLAN R++:
               </button>
             </form>
             <form action={dischargePatient}>
-              <button
-                type="submit"
+              <ConfirmSubmitButton
+                message="¿Dar de alta o retirar este paciente? Se eliminarán sus datos del censo."
                 className="rounded-xl bg-red-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-red-300"
               >
                 Dar de alta / retirar
-              </button>
+              </ConfirmSubmitButton>
             </form>
           </div>
         </div>
@@ -1127,12 +1128,12 @@ PLAN R++:
 
                           <form action={deletePatientTask}>
                             <input type="hidden" name="taskId" value={task.id} />
-                            <button
-                              type="submit"
+                            <ConfirmSubmitButton
+                              message="¿Eliminar este pendiente?"
                               className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                             >
                               Eliminar
-                            </button>
+                            </ConfirmSubmitButton>
                           </form>
                         </div>
                       </div>
@@ -1204,12 +1205,12 @@ PLAN R++:
 
                             <form action={deleteTimelineNote}>
                               <input type="hidden" name="noteId" value={item.noteId} />
-                              <button
-                                type="submit"
+                              <ConfirmSubmitButton
+                                message="¿Eliminar esta nota del expediente?"
                                 className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                               >
                                 Eliminar
-                              </button>
+                              </ConfirmSubmitButton>
                             </form>
                           </>
                         ) : null}
@@ -1217,24 +1218,24 @@ PLAN R++:
                         {item.labId ? (
                           <form action={deleteTimelineLab}>
                             <input type="hidden" name="labId" value={item.labId} />
-                            <button
-                              type="submit"
+                            <ConfirmSubmitButton
+                              message="¿Eliminar este laboratorio o imagen del expediente?"
                               className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                             >
                               Eliminar
-                            </button>
+                            </ConfirmSubmitButton>
                           </form>
                         ) : null}
 
                         {item.imageId ? (
                           <form action={deleteTimelineImage}>
                             <input type="hidden" name="imageId" value={item.imageId} />
-                            <button
-                              type="submit"
+                            <ConfirmSubmitButton
+                              message="¿Eliminar este laboratorio o imagen del expediente?"
                               className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
                             >
                               Eliminar
-                            </button>
+                            </ConfirmSubmitButton>
                           </form>
                         ) : null}
 
