@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import NoteTemplateSelector from "@/app/components/NoteTemplateSelector";
 import SynapseProButton from "@/app/components/SynapseProButton";
+import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
 
 export default async function PatientPage({
   params,
@@ -630,6 +631,8 @@ PLAN:`;
               <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
                 v3 R++
               </span>
+
+              <EvolutionGeneratorButton patientId={id} />
 
               <SynapseProButton
   patientId={id}
