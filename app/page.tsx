@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CURRENT_TEAM_ID } from "@/lib/team";
@@ -38,6 +38,7 @@ export default async function Home({
   searchParams?: Promise<{ subspecialty?: string }>;
 }) {
   const params = await searchParams;
+  const supabase = await createClient();
   const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
   const subspecialtyQuery =
     selectedSubspecialty !== "Todas"
@@ -392,6 +393,7 @@ export default async function Home({
   async function resetRounds() {
     "use server";
 
+    const supabase = await createClient();
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const tomorrowStart = new Date(todayStart);
