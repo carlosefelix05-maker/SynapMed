@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default function NewPatientPage() {
   async function createPatient(formData: FormData) {
@@ -18,6 +19,7 @@ export default function NewPatientPage() {
     if (!full_name || !bed) return;
 
     await supabase.from("patients").insert({
+      team_id: CURRENT_TEAM_ID,
       full_name,
       bed,
       age: ageValue ? Number(ageValue) : null,
