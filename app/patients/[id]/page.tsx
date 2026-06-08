@@ -244,16 +244,24 @@ PLAN R++:
     redirect(`/patients/${id}`);
   }
 
-  async function completeRound() {
-    "use server";
+  async function completeRound(formData: FormData) {
+  "use server";
 
-    await supabase.from("round_logs").insert({
-      patient_id: id,
-    });
+  const nextPatientId = String(formData.get("nextPatientId") ?? "").trim();
 
-    revalidatePath(`/patients/${id}`);
-    revalidatePath("/");
+  await supabase.from("round_logs").insert({
+    patient_id: id,
+  });
+
+  revalidatePath(`/patients/${id}`);
+  revalidatePath("/");
+
+  if (nextPatientId) {
+    redirect(`/patients/${nextPatientId}${subspecialtyQuery}`);
   }
+
+  redirect(`/${subspecialtyQuery}`);
+}
 
   async function dischargePatient() {
     "use server";
@@ -560,13 +568,14 @@ PLAN:`;
               Editar paciente
             </Link>
             <form action={completeRound}>
-              <button
-                type="submit"
-                className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
-              >
-                ✓ Pase completado
-              </button>
-            </form>
+  <input type="hidden" name="nextPatientId" value={nextPatient?.id || ""} />
+  <button
+    type="submit"
+    className="rounded-xl bg-green-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-green-300"
+  >
+    ✓ Pase completado
+  </button>
+</form>
             <form action={dischargePatient}>
               <button
                 type="submit"

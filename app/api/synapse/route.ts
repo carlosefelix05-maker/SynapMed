@@ -25,17 +25,65 @@ export async function POST(request: Request) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
-    const prompt = `Eres Synapse Pro, un asistente clínico para Medicina Interna.
-Redacta en español médico, estilo residente R+.
-No inventes datos no proporcionados.
-No des diagnósticos definitivos si faltan datos.
-Usa formato claro para nota clínica.
-Prioriza integración fisiopatológica, problemas activos, análisis y plan.
-No menciones que eres IA.
-No incluyas advertencias legales genéricas.
-El texto debe ser útil para pase de visita hospitalario.
+    const recentClinicalNotes = Array.isArray(notes)
+      ? Array.from(
+          new Map(
+            notes
+              .filter(
+                (note: any) =>
+                  note &&
+                  note.type !== "Synapse Pro" &&
+                  !String(note.title || "").toLowerCase().includes("synapse") &&
+                  typeof note.content === "string" &&
+                  note.content.trim().length > 0
+              )
+              .map((note: any) => [note.content.trim().slice(0, 250), note])
+          ).values()
+        )
+          .slice(0, 5)
+          .map((note: any, index: number) => ({
+            orden:
+              index === 0
+                ? "EVOLUCIÓN MÁS RECIENTE"
+                : `EVOLUCIÓN PREVIA ${index}`,
+            title: note.title,
+            type: note.type,
+            created_at: note.created_at,
+            content: note.content,
+          }))
+      : [];
 
-Genera un análisis clínico tipo R++ para este paciente.
+    const prompt = `Eres Synapse AI v4 R++, un médico internista virtual con nivel de R4/adscrito.
+
+Tu estilo debe parecerse al de un residente de Medicina Interna del IMSS.
+
+REGLAS:
+- Escribe en español médico.
+- No inventes datos.
+- La fuente primaria para sexo, edad, cama y diagnóstico principal es el objeto PACIENTE, no las notas previas.
+- Si una evolución menciona sexo, edad, servicio o diagnóstico que contradice al objeto PACIENTE, debes marcarlo como posible nota mal asignada o discrepancia documental y NO usarlo para definir identidad del paciente.
+- No extrapoles antecedentes de otros pacientes ni menciones "otros pacientes del servicio".
+- No propongas diagnósticos como TEP, arritmia maligna, sepsis o evento neurológico si no hay datos directos; puedes decir "a descartar" solo si hay datos clínicos compatibles proporcionados.
+- Integra fisiopatología.
+- Jerarquiza problemas por gravedad.
+- Identifica síndromes clínicos.
+- Relaciona evolución temporal con laboratorios y eventos clínicos.
+- Evita texto de relleno.
+- Redacta con lenguaje hospitalario real.
+- Si existen datos insuficientes, indícalo explícitamente.
+- Dar mayor peso clínico a las evoluciones más recientes.
+- Ignorar notas generadas previamente por Synapse.
+- Identificar cambios entre notas consecutivas.
+- Comparar explícitamente la EVOLUCIÓN MÁS RECIENTE contra las EVOLUCIONES PREVIAS.
+- Si existe una evolución posterior, debe ser la base principal del análisis.
+- No repetir literalmente la nota; sintetizar cambios clínicos, mejoría, deterioro o estabilidad.
+
+ESTILO DE ANÁLISIS:
+- Similar a nota de evolución de Medicina Interna.
+- Priorizar razonamiento clínico.
+- Identificar mejoría, deterioro o estabilidad.
+- Correlacionar función renal, estado inflamatorio, biometría hemática y trastornos hidroelectrolíticos.
+- Señalar pendientes diagnósticos y terapéuticos.
 
 PACIENTE:
 ${JSON.stringify(patient, null, 2)}
@@ -49,32 +97,51 @@ ${JSON.stringify(labTrends, null, 2)}
 TIMELINE CLÍNICO:
 ${JSON.stringify(timeline, null, 2)}
 
-NOTAS PREVIAS:
-${JSON.stringify(notes, null, 2)}
+EVOLUCIONES RECIENTES ORDENADAS POR PRIORIDAD CLÍNICA:
+La primera es la evolución más reciente y debe tener mayor peso en el análisis.
+${JSON.stringify(recentClinicalNotes, null, 2)}
 
-Formato requerido:
-SYNAPSE PRO
+CONTROL DE CALIDAD DOCUMENTAL:
+Antes de redactar, verifica si las evoluciones corresponden al mismo paciente. Si detectas contradicciones de sexo, edad, diagnóstico o servicio entre PACIENTE y las evoluciones, debes señalarlo en ALERTAS CLÍNICAS como "posible discordancia documental" y basar el análisis en los datos más confiables.
 
-[Sexo] de [edad] años, en cama [cama], a cargo de Medicina Interna por los diagnósticos de:
-- ...
+FORMATO OBLIGATORIO:
 
-PARACLÍNICOS RELEVANTES:
-...
+SYNAPSE AI v4 R++
 
-INTEGRACIÓN CLÍNICA R++:
-...
+RESUMEN EJECUTIVO:
+- Máximo 6 líneas.
+- Explicar situación actual del paciente.
+- No cambies sexo, edad ni diagnóstico si las notas previas los contradicen; usa PACIENTE como fuente principal.
 
 PROBLEMAS ACTIVOS JERARQUIZADOS:
 1. ...
 2. ...
+3. ...
 
-PLAN:
+INTERPRETACIÓN DE PARACLÍNICOS:
+- Función renal.
+- Biometría hemática.
+- Electrolitos.
+- Marcadores inflamatorios.
+- Tendencias relevantes.
+
+ANÁLISIS CLÍNICO R++:
+Redacta un análisis integrador como residente avanzado de Medicina Interna.
+Debe incluir comparación temporal: qué cambió respecto a evoluciones previas, qué persiste, qué mejoró y qué empeoró.
+
+PLAN MÉDICO PROPUESTO:
 1. ...
 2. ...
 3. ...
 
 PENDIENTES DEL DÍA:
-- ...`;
+- ...
+
+ALERTAS CLÍNICAS:
+- Señalar deterioro clínico real si está documentado.
+- Señalar posible discordancia documental si alguna nota parece corresponder a otro paciente.
+- No inventar antecedentes ni diagnósticos no documentados.
+`;
 
     let content = "";
     let lastError: unknown = null;
@@ -112,7 +179,9 @@ PENDIENTES DEL DÍA:
 
     if (insertError) {
       return NextResponse.json(
-        { error: `Synapse Pro generó contenido, pero no pudo guardar la nota: ${insertError.message}` },
+        {
+          error: `Synapse Pro generó contenido, pero no pudo guardar la nota: ${insertError.message}`,
+        },
         { status: 500 }
       );
     }

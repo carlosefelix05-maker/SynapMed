@@ -295,10 +295,7 @@ export default async function Home({
 
   const roundsSource = visiblePendingPatientSummaries;
 
-  const nextPatientForRounds =
-    roundsSource.find((item) => item.priority === "Crítico")?.patient.id ||
-    roundsSource.find((item) => item.priority === "Alta")?.patient.id ||
-    roundsSource[0]?.patient.id;
+  const nextPatientForRounds = roundsSource[0]?.patient.id;
 
   async function resetRounds() {
     "use server";
