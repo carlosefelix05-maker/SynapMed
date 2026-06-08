@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { supabase } from "@/lib/supabase";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +23,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: teamPatient } = await supabase
+      .from("patients")
+      .select("id")
+      .eq("id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
+      .single();
+
+    if (!teamPatient) {
+      return NextResponse.json(
+        { error: "Paciente no encontrado en el equipo actual" },
+        { status: 404 }
+      );
+    }
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
@@ -29,6 +44,7 @@ export async function POST(request: Request) {
       .from("problems")
       .select("id, title, status, priority, comments, created_at, started_at, resolved_at")
       .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
       .order("created_at", { ascending: false });
 
     const priorityOrder: Record<string, number> = {
@@ -221,6 +237,7 @@ ALERTAS CLÍNICAS:
       .from("notes")
       .insert({
         patient_id: patientId,
+        team_id: CURRENT_TEAM_ID,
         type: "Synapse Pro",
         title: `Synapse Pro ${new Date().toLocaleDateString("es-MX")}`,
         content,
