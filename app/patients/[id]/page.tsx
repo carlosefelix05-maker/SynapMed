@@ -521,6 +521,13 @@ const { error } = await supabase.from("patient_tasks").insert({
         new Date(b.date as string).getTime() - new Date(a.date as string).getTime()
     );
 
+  function timelineBadgeClass(type: string) {
+    if (type === "Labs") return "bg-amber-300/10 text-amber-300";
+    if (type === "Imagen") return "bg-purple-300/10 text-purple-300";
+    if (type === "Pendiente realizado") return "bg-green-300/10 text-green-300";
+    return "bg-cyan-400/10 text-cyan-300";
+  }
+
   const synapsePriority =
     latestLabs?.cr && Number(latestLabs.cr) >= 2
       ? "Alerta renal por creatinina elevada."
@@ -917,7 +924,7 @@ PLAN R++:
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${timelineBadgeClass(item.type)}`}>
                             {item.type}
                           </span>
                           <span className="text-xs text-slate-500">
