@@ -27,6 +27,19 @@ export default async function NoteDetailPage({
     .eq("patient_id", id)
     .single();
 
+  async function deleteNote() {
+    "use server";
+
+    await supabase
+      .from("notes")
+      .delete()
+      .eq("id", noteId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+    redirect(`/patients/${id}`);
+  }
+
   if (!patient || !note) {
     return (
       <main className="min-h-screen bg-[#061325] p-8 text-white">

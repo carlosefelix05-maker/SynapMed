@@ -1,57 +1,149 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { supabase } from "@/lib/supabase";
 
-type Note = {
-  id: string;
-  title: string | null;
-  content: string | null;
-  type: string | null;
-  created_at?: string | null;
-};
+export default async function EditPatientPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
 
-type NotesSectionProps = {
-  patientId: string;
-  notes: Note[];
-};
+  const { data: patient } = await supabase
+    .from("patients")
+    .select("*")
+    .eq("id", id)
+    .single();
 
-export default function NotesSection({ patientId, notes }: NotesSectionProps) {
-  if (!notes || notes.length === 0) {
-    return <p className="text-slate-400">Sin notas clínicas registradas.</p>;
+  async function updatePatient(formData: FormData) {
+    "use server";
+
+    const full_name = String(formData.get("full_name") ?? "").trim();
+    const bed = String(formData.get("bed") ?? "").trim();
+    const ageValue = String(formData.get("age") ?? "").trim();
+    const sex = String(formData.get("sex") ?? "").trim();
+    const diagnosis = String(formData.get("diagnosis") ?? "").trim();
+
+    if (!full_name) {
+      return;
+    }
+
+    await supabase
+      .from("patients")
+      .update({
+        full_name,
+        bed: bed || null,
+        age: ageValue ? Number(ageValue) : null,
+        sex: sex || null,
+        diagnosis: diagnosis || null,
+      })
+      .eq("id", id);
+
+    revalidatePath("/");
+    revalidatePath(`/patients/${id}`);
+    redirect(`/patients/${id}`);
+  }
+
+  if (!patient) {
+    return (
+      <main className="min-h-screen bg-[#061325] p-8 text-white">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/" className="text-sm text-cyan-300">
+            ← Volver a Rounds
+          </Link>
+          <p className="mt-8 text-red-300">Paciente no encontrado.</p>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <div className="space-y-4">
-      {notes.map((note) => (
-        <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="font-bold">{note.title || "Nota médica"}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                {note.type || "Nota médica"}
-              </p>
-            </div>
+    <main className="min-h-screen bg-[#061325] p-8 text-white">
+      <div className="mx-auto max-w-4xl">
+        <Link href={`/patients/${id}`} className="mb-8 inline-block text-sm text-cyan-300">
+          ← Volver al expediente
+        </Link>
 
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/patients/${patientId}/notes/${note.id}`}
-                className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
-              >
-                Ver
-              </Link>
-
-              <Link
-                href={`/patients/${patientId}/notes/${note.id}/edit`}
-                className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
-              >
-                Editar
-              </Link>
-            </div>
+        <section className="rounded-3xl bg-white/10 p-8">
+          <div className="mb-8">
+            <p className="text-sm text-cyan-300">Editar paciente</p>
+            <h1 className="mt-2 text-4xl font-bold">{patient.full_name}</h1>
+            <p className="mt-3 text-slate-400">Actualiza los datos principales del expediente.</p>
           </div>
 
-          <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-slate-300">
-            {note.content || "Sin contenido."}
-          </p>
-        </div>
-      ))}
-    </div>
+          <form action={updatePatient} className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm text-slate-400">Nombre completo</label>
+              <input
+                name="full_name"
+                defaultValue={patient.full_name || ""}
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Cama</label>
+                <input
+                  name="bed"
+                  defaultValue={patient.bed || ""}
+                  className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Edad</label>
+                <input
+                  name="age"
+                  type="number"
+                  defaultValue={patient.age || ""}
+                  className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Sexo</label>
+                <select
+                  name="sex"
+                  defaultValue={patient.sex || ""}
+                  className="w-full rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-white outline-none"
+                >
+                  <option value="">No especificado</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Femenino">Femenino</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm text-slate-400">Diagnósticos</label>
+              <textarea
+                name="diagnosis"
+                rows={6}
+                defaultValue={patient.diagnosis || ""}
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                type="submit"
+                className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Guardar cambios
+              </button>
+
+              <Link
+                href={`/patients/${id}`}
+                className="rounded-xl bg-white/10 px-6 py-3 font-semibold text-slate-200 hover:bg-white/20"
+              >
+                Cancelar
+              </Link>
+            </div>
+          </form>
+        </section>
+      </div>
+    </main>
   );
 }
