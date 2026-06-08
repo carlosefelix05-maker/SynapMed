@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function PatientImagePage({
   params,
@@ -7,6 +7,7 @@ export default async function PatientImagePage({
   params: Promise<{ id: string; imageId: string }>;
 }) {
   const { id, imageId } = await params;
+  const supabase = await createClient();
 
   const { data: image } = await supabase
     .from("patient_images")
