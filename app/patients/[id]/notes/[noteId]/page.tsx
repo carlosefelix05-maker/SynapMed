@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function NoteDetailPage({
   params,
@@ -11,6 +11,7 @@ export default async function NoteDetailPage({
   searchParams?: Promise<{ confirmDelete?: string }>;
 }) {
   const { id, noteId } = await params;
+  const supabase = await createClient();
   const query = await searchParams;
   const isConfirmingDelete = query?.confirmDelete === "1";
 
@@ -29,6 +30,7 @@ export default async function NoteDetailPage({
 
   async function deleteNote() {
     "use server";
+    const supabase = await createClient();
 
     await supabase
       .from("notes")
