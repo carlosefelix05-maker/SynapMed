@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default function NewPatientPage() {
   async function createPatient(formData: FormData) {
     "use server";
+
+    const supabase = await createClient();
 
     const full_name = String(formData.get("full_name") ?? "").trim();
     const bed = String(formData.get("bed") ?? "").trim();
