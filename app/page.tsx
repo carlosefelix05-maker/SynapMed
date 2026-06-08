@@ -63,6 +63,11 @@ export default async function Home({
     .select("patient_id, completed_at")
     .order("completed_at", { ascending: false });
 
+  const { data: patientTasks } = await supabase
+    .from("patient_tasks")
+    .select("id, patient_id, title, category, status, task_scope, created_at, completed_at")
+    .order("created_at", { ascending: false });
+
   if (error) {
     return (
       <main className="min-h-screen bg-[#071A2F] p-10 text-white">
@@ -76,6 +81,16 @@ export default async function Home({
   const labsList = (labs ?? []) as Lab[];
   const notesList = (notes ?? []) as { patient_id: string; created_at: string }[];
   const roundLogsList = (roundLogs ?? []) as { patient_id: string; completed_at: string }[];
+  const patientTasksList = (patientTasks ?? []) as {
+    id: string;
+    patient_id: string;
+    title: string;
+    category: string | null;
+    status: string;
+    task_scope: string | null;
+    created_at: string;
+    completed_at: string | null;
+  }[];
   const latestLabsByPatient = new Map<string, Lab>();
 
   for (const lab of labsList) {
@@ -284,6 +299,63 @@ export default async function Home({
     };
   });
 
+  const pendingTasksByPatient = patientTasksList
+    .filter((task) => task.status !== "Realizado" && (task.task_scope || "Guardia") === "Guardia")
+    .map((task) => {
+      const patient = list.find((item) => item.id === task.patient_id);
+
+      if (!patient) return null;
+
+      return {
+        ...task,
+        patient,
+      };
+    })
+    .filter(Boolean) as Array<{
+      id: string;
+      patient_id: string;
+      title: string;
+      category: string | null;
+      status: string;
+      task_scope: string | null;
+      created_at: string;
+      completed_at: string | null;
+      patient: Patient;
+    }>;
+
+  const visiblePendingTasks =
+    selectedSubspecialty === "Todas"
+      ? pendingTasksByPatient
+      : pendingTasksByPatient.filter(
+          (task) => (task.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
+        );
+
+  const pendingTasksGrouped = visiblePendingTasks.reduce(
+    (groups, task) => {
+      const key = task.patient.id;
+
+      if (!groups[key]) {
+        groups[key] = {
+          patient: task.patient,
+          tasks: [],
+        };
+      }
+
+      groups[key].tasks.push(task);
+      return groups;
+    },
+    {} as Record<string, { patient: Patient; tasks: typeof visiblePendingTasks }>
+  );
+
+  const pendingTaskGroups = Object.values(pendingTasksGrouped).sort((a, b) => {
+    const bedA = Number(a.patient.bed);
+    const bedB = Number(b.patient.bed);
+
+    if (!Number.isNaN(bedA) && !Number.isNaN(bedB)) return bedA - bedB;
+
+    return String(a.patient.bed || "").localeCompare(String(b.patient.bed || ""));
+  });
+
   const criticalAlertsMap = new Map<string, { bed: string | null; name: string; labs: string }>();
 
   for (const item of patientSummaries.filter((summary) => summary.priority === "Crítico")) {
@@ -454,6 +526,76 @@ export default async function Home({
                   </div>
                 </Link>
               ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-[#071A2F] p-5">
+              <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h4 className="text-xl font-bold text-cyan-300">
+                    📌 Pendientes globales de la guardia
+                  </h4>
+                  <p className="text-sm text-slate-400">
+                    Pendientes no realizados {selectedSubspecialty === "Todas" ? "de todo el servicio" : `de ${selectedSubspecialty}`}
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                  {visiblePendingTasks.length} pendiente(s)
+                </span>
+              </div>
+
+              {pendingTaskGroups.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingTaskGroups.map((group) => (
+                    <div
+                      key={group.patient.id}
+                      className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                    >
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-white">
+                            Cama {group.patient.bed} · {group.patient.full_name}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            {group.patient.subspecialty || "Medicina Interna"}
+                          </p>
+                        </div>
+
+                        <Link
+                          href={`/patients/${group.patient.id}${subspecialtyQuery}`}
+                          className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
+                        >
+                          Abrir expediente
+                        </Link>
+                      </div>
+
+                      <div className="space-y-2">
+                        {group.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex flex-col gap-2 rounded-xl bg-[#061527] p-3 text-sm md:flex-row md:items-center md:justify-between"
+                          >
+                            <div>
+                              <p className="text-slate-200">{task.title}</p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {task.category || "General"} · {task.task_scope || "Guardia"} · {new Date(task.created_at).toLocaleString("es-MX")}
+                              </p>
+                            </div>
+
+                            <span className="w-fit rounded-full bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                              {task.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Sin pendientes globales por realizar.
+                </p>
+              )}
             </div>
           </section>
 

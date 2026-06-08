@@ -2,7 +2,6 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import NoteTemplateSelector from "@/app/components/NoteTemplateSelector";
 import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
 import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
@@ -243,16 +242,18 @@ PLAN R++:
     "use server";
 
     const title = String(formData.get("title") ?? "").trim();
-    const category = String(formData.get("category") ?? "").trim();
+const category = String(formData.get("category") ?? "").trim();
+const taskScope = String(formData.get("task_scope") ?? "Guardia").trim();
 
-    if (!title) return;
+if (!title) return;
 
-    const { error } = await supabase.from("patient_tasks").insert({
-      patient_id: id,
-      title,
-      category: category || null,
-      status: "Pendiente",
-    });
+const { error } = await supabase.from("patient_tasks").insert({
+  patient_id: id,
+  title,
+  category: category || null,
+  task_scope: taskScope || "Guardia",
+  status: "Pendiente",
+});
 
     if (error) {
       console.error("Error al guardar pendiente:", error.message);
@@ -480,6 +481,8 @@ PLAN R++:
       title: note.title || "Nota médica",
       description: note.type || "Nota clínica",
       href: `/patients/${id}/notes/${note.id}`,
+      noteId: note.id,
+      editable: true,
     })),
     ...(labHistory ?? []).map((lab) => ({
       id: `lab-${lab.id}`,
@@ -488,7 +491,29 @@ PLAN R++:
       title: timelineLabs(lab) || "Laboratorios capturados",
       description: "Registro de laboratorio",
       href: null,
+      labId: lab.id,
     })),
+    ...(patientImages ?? []).map((image) => ({
+      id: `image-${image.id}`,
+      type: "Imagen",
+      date: image.created_at,
+      title: image.title || "Imagen clínica",
+      description: image.study_type || "Estudio clínico",
+      href: `/patients/${id}/images/${image.id}`,
+      imageId: image.id,
+    })),
+    ...(patientTasks ?? [])
+      .filter((task) => task.status === "Realizado")
+      .map((task) => ({
+        id: `task-${task.id}`,
+        type: "Pendiente realizado",
+        date: task.completed_at || task.created_at,
+        title: task.title || "Pendiente realizado",
+        description: `${task.category || "General"} · ${task.task_scope || "Guardia"}`,
+        href: null,
+        taskId: task.id,
+        completedTask: true,
+      })),
   ]
     .filter((item) => Boolean(item.date))
     .sort(
@@ -567,6 +592,54 @@ PLAN R++:
     labsResumen || "pendientes de captura"
   }. Se sugiere correlacionar con evolución clínica, exploración física, balance hídrico, respuesta al tratamiento y pendientes del día.`;
 
+  async function deleteTimelineNote(formData: FormData) {
+    "use server";
+
+    const noteId = String(formData.get("noteId") ?? "").trim();
+
+    if (!noteId) return;
+
+    await supabase
+      .from("notes")
+      .delete()
+      .eq("id", noteId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function deleteTimelineLab(formData: FormData) {
+    "use server";
+
+    const labId = String(formData.get("labId") ?? "").trim();
+
+    if (!labId) return;
+
+    await supabase
+      .from("labs")
+      .delete()
+      .eq("id", labId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function deleteTimelineImage(formData: FormData) {
+    "use server";
+
+    const imageId = String(formData.get("imageId") ?? "").trim();
+
+    if (!imageId) return;
+
+    await supabase
+      .from("patient_images")
+      .delete()
+      .eq("id", imageId)
+      .eq("patient_id", id);
+
+    revalidatePath(`/patients/${id}`);
+  }
+
   const synapsePlan = synapsePendings.join("; ");
 
   const priorityOrder: Record<string, number> = {
@@ -605,50 +678,40 @@ PLAN R++:
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const plantillaMI = `AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
+  const worklistItems = [
+    ...smartProblems
+      .filter((problem) => problem.status !== "Resuelto" && ["Crítico", "Alta"].includes(problem.priority))
+      .map((problem) => ({
+        id: `problem-${problem.id}`,
+        source: "Problema activo",
+        title: `Revalorar: ${problem.title}`,
+        detail: `${problem.priority} · ${problem.status}`,
+      })),
+    ...smartTasks
+      .filter((task) => task.status !== "Realizado")
+      .map((task) => ({
+        id: `task-${task.id}`,
+        source: task.task_scope || "Pendiente",
+        title: task.title,
+        detail: task.category || "General",
+      })),
+    ...synapseAlerts.map((alert, index) => ({
+      id: `alert-${index}`,
+      source: "Alerta Synapse",
+      title: alert,
+      detail: "Laboratorio crítico o clínicamente relevante",
+    })),
+    ...synapsePendings.map((pending, index) => ({
+      id: `pending-${index}`,
+      source: "Sugerido",
+      title: pending,
+      detail: "Pendiente sugerido por Synapse",
+    })),
+  ];
 
-EXPLORACIÓN FÍSICA:
-NEUROLÓGICO: CONSCIENTE, ORIENTADO, SIN DATOS DE FOCALIZACIÓN NEUROLÓGICA.
-CARDIOVASCULAR: RUIDOS CARDIACOS RÍTMICOS, DE BUEN TONO E INTENSIDAD.
-RESPIRATORIO: ADECUADA EXPANSIÓN TORÁCICA, MURMULLO VESICULAR PRESENTE.
-ABDOMEN: BLANDO, DEPRESIBLE, NO DOLOROSO.
-EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
 
-PARACLÍNICOS:
-${labsResumen || "Pendientes de captura."}
 
-ANÁLISIS:
-${synapseAnalysis}
 
-PLAN:
-${synapsePlan}`;
-
-  const plantillaIngreso = `FICHA DE IDENTIFICACIÓN:
-NOMBRE:
-EDAD:
-SEXO:
-CAMA:
-
-PADECIMIENTO ACTUAL:
-
-ANTECEDENTES HEREDOFAMILIARES:
-
-ANTECEDENTES PERSONALES NO PATOLÓGICOS:
-
-ANTECEDENTES PERSONALES PATOLÓGICOS:
-
-EXPLORACIÓN FÍSICA:
-NEUROLÓGICO:
-CARDIOVASCULAR:
-RESPIRATORIO:
-ABDOMEN:
-EXTREMIDADES:
-
-PARACLÍNICOS:
-
-ANÁLISIS:
-
-PLAN:`;
 
   const patientList =
     selectedSubspecialty === "Todas"
@@ -849,7 +912,7 @@ PLAN R++:
                 📅 Timeline clínico
               </h2>
               <p className="text-sm text-slate-400">
-                Notas y laboratorios ordenados por fecha
+                Notas, laboratorios, imágenes y pendientes realizados ordenados por fecha
               </p>
             </div>
 
@@ -879,14 +942,74 @@ PLAN R++:
                         </p>
                       </div>
 
-                                            {item.href ? (
-                        <Link
-                          href={item.href}
-                          className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
-                        >
-                          Abrir
-                        </Link>
-                      ) : null}
+                                            <div className="flex flex-wrap gap-2">
+                        {item.href ? (
+                          <Link
+                            href={item.href}
+                            className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
+                          >
+                            Ver
+                          </Link>
+                        ) : null}
+
+                        {item.editable && item.noteId ? (
+                          <>
+                            <Link
+                              href={`/patients/${id}/notes/${item.noteId}/edit`}
+                              className="rounded-xl bg-amber-300 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-amber-200"
+                            >
+                              Editar
+                            </Link>
+
+                            <form action={deleteTimelineNote}>
+                              <input type="hidden" name="noteId" value={item.noteId} />
+                              <button
+                                type="submit"
+                                className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+                              >
+                                Eliminar
+                              </button>
+                            </form>
+                          </>
+                        ) : null}
+
+                        {item.labId ? (
+                          <form action={deleteTimelineLab}>
+                            <input type="hidden" name="labId" value={item.labId} />
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+                            >
+                              Eliminar
+                            </button>
+                          </form>
+                        ) : null}
+
+                        {item.imageId ? (
+                          <form action={deleteTimelineImage}>
+                            <input type="hidden" name="imageId" value={item.imageId} />
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
+                            >
+                              Eliminar
+                            </button>
+                          </form>
+                        ) : null}
+
+                        {item.completedTask && item.taskId ? (
+                          <form action={updatePatientTaskStatus}>
+                            <input type="hidden" name="taskId" value={item.taskId} />
+                            <input type="hidden" name="status" value="Pendiente" />
+                            <button
+                              type="submit"
+                              className="rounded-xl bg-green-300 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-green-200"
+                            >
+                              Reabrir
+                            </button>
+                          </form>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1064,33 +1187,48 @@ PLAN R++:
             <form action={createPatientTask} className="mb-4 rounded-2xl bg-[#071A2F] p-4">
               <p className="mb-3 font-semibold text-cyan-300">Agregar pendiente</p>
 
-              <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-                <input
+              <div className="space-y-3">
+                <textarea
                   name="title"
+                  rows={4}
                   placeholder="Ej. Actualizar indicaciones, realizar curación, solicitar EKG"
-                  className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500"
+                  className="min-h-[120px] w-full resize-y rounded-xl border border-white/10 bg-white/10 px-3 py-3 text-white outline-none placeholder:text-slate-500"
                 />
 
-                <select
-                  name="category"
-                  defaultValue="General"
-                  className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
-                >
-                  <option value="General">General</option>
-                  <option value="Indicaciones">Indicaciones</option>
-                  <option value="Curación">Curación</option>
-                  <option value="Laboratorio">Laboratorio</option>
-                  <option value="Imagen">Imagen</option>
-                  <option value="Interconsulta">Interconsulta</option>
-                  <option value="Procedimiento">Procedimiento</option>
-                </select>
+                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+                  <select
+                    name="category"
+                    defaultValue="General"
+                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
+                  >
+                    <option value="General">General</option>
+                    <option value="Indicaciones">Indicaciones</option>
+                    <option value="Curación">Curación</option>
+                    <option value="Laboratorio">Laboratorio</option>
+                    <option value="Imagen">Imagen</option>
+                    <option value="Interconsulta">Interconsulta</option>
+                    <option value="Procedimiento">Procedimiento</option>
+                  </select>
 
-                <button
-                  type="submit"
-                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
-                >
-                  Agregar
-                </button>
+                  <select
+                    name="task_scope"
+                    defaultValue="Guardia"
+                    className="rounded-xl border border-white/10 bg-[#061325] px-3 py-2 text-white outline-none"
+                  >
+                    <option value="Guardia">Guardia</option>
+                    <option value="Pase">Pase</option>
+                    <option value="Seguimiento">Seguimiento</option>
+                    <option value="Alta">Alta</option>
+                    <option value="Interconsulta">Interconsulta</option>
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                  >
+                    Agregar
+                  </button>
+                </div>
               </div>
             </form>
 
@@ -1109,15 +1247,20 @@ PLAN R++:
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className={`rounded-full px-3 py-1 text-xs ${
-                              isDone
-                                ? "bg-green-300/10 text-green-300"
-                                : "bg-amber-300/10 text-amber-300"
-                            }`}>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs ${
+                                isDone
+                                  ? "bg-green-300/10 text-green-300"
+                                  : "bg-amber-300/10 text-amber-300"
+                              }`}
+                            >
                               {task.status}
                             </span>
                             <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
                               {task.category || "General"}
+                            </span>
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                              {task.task_scope || "Guardia"}
                             </span>
                           </div>
 
@@ -1158,6 +1301,45 @@ PLAN R++:
             ) : (
               <p className="text-slate-400">
                 Sin pendientes registrados.
+              </p>
+            )}
+          </section>
+
+          <section className="rounded-3xl bg-white/10 p-6">
+            <div className="mb-4 flex flex-col gap-1">
+              <h2 className="text-2xl font-bold text-cyan-300">
+                📋 Lista de trabajo
+              </h2>
+              <p className="text-sm text-slate-400">
+                Resumen automático de acciones para el pase, generado desde problemas activos, pendientes y alertas Synapse
+              </p>
+            </div>
+
+            {worklistItems.length > 0 ? (
+              <div className="space-y-3">
+                {worklistItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-white/10 bg-[#071A2F] p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
+                        {item.source}
+                      </span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
+                        {item.detail}
+                      </span>
+                    </div>
+
+                    <p className="mt-3 font-semibold text-white">
+                      {item.title}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-slate-400">
+                Sin acciones pendientes sugeridas.
               </p>
             )}
           </section>
@@ -1271,103 +1453,7 @@ PLAN R++:
               <li>• Documentar Progress Note</li>
             </ul>
           </section>
-          <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
-            <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-2xl font-bold text-cyan-300">
-                Notas clínicas
-              </h2>
 
-              <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-sm text-cyan-300">
-                + Nueva evolución
-              </span>
-            </div>
-
-            <form action={createNote} className="mb-6 rounded-2xl bg-[#071A2F] p-4">
-              <NoteTemplateSelector
-                today={today}
-                defaultTemplate={plantillaMI}
-                subspecialty={patient.subspecialty}
-              />
-
-              <button
-                type="submit"
-                className="mt-4 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950"
-              >
-                Guardar evolución
-              </button>
-            </form>
-
-            <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
-              <p className="mb-2 font-semibold text-cyan-300">Plantilla MI rápida</p>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
-{`AL PASE DE VISITA SE ENCUENTRA PACIENTE EN CAMA, CON POSICIÓN LIBREMENTE ELEGIDA, CONSCIENTE, ORIENTADO Y RESPONDIENDO ADECUADAMENTE AL INTERROGATORIO. SE MANTIENE CON ESTABILIDAD HEMODINÁMICA Y RESPIRATORIA AL MOMENTO.
-
-EXPLORACIÓN FÍSICA:
-NEUROLÓGICO: CONSCIENTE, ORIENTADO, SIN DATOS DE FOCALIZACIÓN NEUROLÓGICA.
-CARDIOVASCULAR: RUIDOS CARDIACOS RÍTMICOS, DE BUEN TONO E INTENSIDAD.
-RESPIRATORIO: ADECUADA EXPANSIÓN TORÁCICA, MURMULLO VESICULAR PRESENTE.
-ABDOMEN: BLANDO, DEPRESIBLE, NO DOLOROSO.
-EXTREMIDADES: SIN EDEMA, LLENADO CAPILAR CONSERVADO.
-
-ANÁLISIS:
-
-PLAN:`}
-              </p>
-            </div>
-
-            <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
-              <p className="mb-2 font-semibold text-cyan-300">Plantilla de ingreso</p>
-              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
-                {plantillaIngreso}
-              </p>
-            </div>
-
-           {notes && notes.length > 0 ? (
-  <div className="space-y-4">
-    {notes.map((note) => (
-      <div key={note.id} className="rounded-2xl bg-[#071A2F] p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div>
-            <p className="font-bold">{note.title || "Nota médica"}</p>
-            <p className="mt-1 text-xs text-slate-500">
-              {note.type || "Nota médica"}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/patients/${id}/notes/${note.id}`}
-              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/20"
-            >
-              Ver
-            </Link>
-
-            <Link
-              href={`/patients/${id}/notes/${note.id}/edit`}
-              className="rounded-xl bg-cyan-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-cyan-300"
-            >
-              Editar
-            </Link>
-
-            <Link
-              href={`/patients/${id}/notes/${note.id}?confirmDelete=1`}
-              className="rounded-xl bg-red-400 px-3 py-2 text-xs font-semibold text-slate-950 hover:bg-red-300"
-            >
-              Eliminar
-            </Link>
-          </div>
-        </div>
-
-        <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-slate-300">
-          {note.content || "Sin contenido."}
-        </p>
-      </div>
-    ))}
-  </div>
-) : (
-  <p className="text-slate-400">Sin notas clínicas registradas.</p>
-)}
-          </section>
         </div>
       </div>
     </main>
