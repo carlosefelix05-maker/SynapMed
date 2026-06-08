@@ -3,7 +3,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 
 function formatLabs(lab: any) {
@@ -34,6 +34,7 @@ function formatLabs(lab: any) {
 }
 
 export async function POST(request: Request) {
+  const supabase = await createClient();
   try {
     const body = await request.json();
     const { patientId } = body;
