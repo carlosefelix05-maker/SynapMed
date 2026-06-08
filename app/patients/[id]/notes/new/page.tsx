@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewNotePage({
@@ -10,6 +10,8 @@ export default async function NewNotePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  const supabase = await createClient();
 
   const { data: patient } = await supabase
     .from("patients")
@@ -66,6 +68,8 @@ Continuar vigilancia clínica; actualizar laboratorios según evolución; revalo
 
   async function createNote(formData: FormData) {
     "use server";
+
+    const supabase = await createClient();
 
     const type = String(formData.get("type") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
