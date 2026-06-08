@@ -678,36 +678,6 @@ const { error } = await supabase.from("patient_tasks").insert({
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const worklistItems = [
-    ...smartProblems
-      .filter((problem) => problem.status !== "Resuelto" && ["Crítico", "Alta"].includes(problem.priority))
-      .map((problem) => ({
-        id: `problem-${problem.id}`,
-        source: "Problema activo",
-        title: `Revalorar: ${problem.title}`,
-        detail: `${problem.priority} · ${problem.status}`,
-      })),
-    ...smartTasks
-      .filter((task) => task.status !== "Realizado")
-      .map((task) => ({
-        id: `task-${task.id}`,
-        source: task.task_scope || "Pendiente",
-        title: task.title,
-        detail: task.category || "General",
-      })),
-    ...synapseAlerts.map((alert, index) => ({
-      id: `alert-${index}`,
-      source: "Alerta Synapse",
-      title: alert,
-      detail: "Laboratorio crítico o clínicamente relevante",
-    })),
-    ...synapsePendings.map((pending, index) => ({
-      id: `pending-${index}`,
-      source: "Sugerido",
-      title: pending,
-      detail: "Pendiente sugerido por Synapse",
-    })),
-  ];
 
 
 
@@ -1305,44 +1275,7 @@ PLAN R++:
             )}
           </section>
 
-          <section className="rounded-3xl bg-white/10 p-6">
-            <div className="mb-4 flex flex-col gap-1">
-              <h2 className="text-2xl font-bold text-cyan-300">
-                📋 Lista de trabajo
-              </h2>
-              <p className="text-sm text-slate-400">
-                Resumen automático de acciones para el pase, generado desde problemas activos, pendientes y alertas Synapse
-              </p>
-            </div>
 
-            {worklistItems.length > 0 ? (
-              <div className="space-y-3">
-                {worklistItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-2xl border border-white/10 bg-[#071A2F] p-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300">
-                        {item.source}
-                      </span>
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-slate-300">
-                        {item.detail}
-                      </span>
-                    </div>
-
-                    <p className="mt-3 font-semibold text-white">
-                      {item.title}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-400">
-                Sin acciones pendientes sugeridas.
-              </p>
-            )}
-          </section>
 
           <section className="rounded-3xl bg-white/10 p-6">
             <div className="mb-4 flex items-center justify-between">
