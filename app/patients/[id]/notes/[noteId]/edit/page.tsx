@@ -1,9 +1,7 @@
-
-
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function EditNotePage({
   params,
@@ -11,6 +9,7 @@ export default async function EditNotePage({
   params: Promise<{ id: string; noteId: string }>;
 }) {
   const { id, noteId } = await params;
+  const supabase = await createClient();
 
   const { data: patient } = await supabase
     .from("patients")
@@ -27,6 +26,7 @@ export default async function EditNotePage({
 
   async function updateNote(formData: FormData) {
     "use server";
+    const supabase = await createClient();
 
     const type = String(formData.get("type") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
