@@ -73,17 +73,32 @@ export default function LogoutButton() {
 
     try {
       await Promise.race([
-        supabase.auth.signOut(),
+        supabase.auth.signOut({ scope: "local" }),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Logout timeout")), 5000)
+          setTimeout(() => reject(new Error("Logout timeout")), 3000)
         ),
       ]);
     } catch (error) {
       console.error("Error cerrando sesión:", error);
     } finally {
+      try {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith("sb-") || key.includes("supabase")) {
+            localStorage.removeItem(key);
+          }
+        });
+
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith("sb-") || key.includes("supabase")) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch (storageError) {
+        console.error("Error limpiando sesión local:", storageError);
+      }
+
       setLoading(false);
-      router.replace("/login");
-      router.refresh();
+      window.location.replace("/login");
     }
   }
 
