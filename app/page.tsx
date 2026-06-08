@@ -39,6 +39,10 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
+  const subspecialtyQuery =
+    selectedSubspecialty !== "Todas"
+      ? `?subspecialty=${encodeURIComponent(selectedSubspecialty)}`
+      : "";
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*")
@@ -218,14 +222,21 @@ export default async function Home({
     };
   });
 
-  const criticalCount = patientSummaries.filter((item) => item.priority === "Crítico").length;
-  const highPriorityCount = patientSummaries.filter((item) => item.priority === "Alta").length;
-  const stableCount = patientSummaries.filter((item) => item.priority === "Estable").length;
-  const noLabsCount = patientSummaries.filter((item) => !item.lab).length;
+  const currentPassSummaries =
+    selectedSubspecialty === "Todas"
+      ? patientSummaries
+      : patientSummaries.filter(
+          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
+        );
+
+  const criticalCount = currentPassSummaries.filter((item) => item.priority === "Crítico").length;
+  const highPriorityCount = currentPassSummaries.filter((item) => item.priority === "Alta").length;
+  const stableCount = currentPassSummaries.filter((item) => item.priority === "Estable").length;
+  const noLabsCount = currentPassSummaries.filter((item) => !item.lab).length;
   const criticalPendingCount = criticalCount;
-  const noNoteTodayCount = patientSummaries.filter((item) => !patientsWithNoteToday.has(item.patient.id)).length;
-  const completedRoundsCount = patientSummaries.filter((item) => patientsWithRoundCompletedToday.has(item.patient.id)).length;
-  const pendingRoundsCount = patientSummaries.length - completedRoundsCount;
+  const noNoteTodayCount = currentPassSummaries.filter((item) => !patientsWithNoteToday.has(item.patient.id)).length;
+  const completedRoundsCount = currentPassSummaries.filter((item) => patientsWithRoundCompletedToday.has(item.patient.id)).length;
+  const pendingRoundsCount = currentPassSummaries.length - completedRoundsCount;
 
   const pendingPatientSummaries = patientSummaries.filter(
     (item) => !patientsWithRoundCompletedToday.has(item.patient.id)
@@ -274,14 +285,15 @@ export default async function Home({
     }
   }
 
-  const criticalAlerts = Array.from(criticalAlertsMap.values());
+  const criticalAlerts = Array.from(criticalAlertsMap.values()).filter((alert) => {
+    if (selectedSubspecialty === "Todas") return true;
 
-  const roundsSource =
-    selectedSubspecialty === "Todas"
-      ? patientSummaries
-      : patientSummaries.filter(
-          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
-        );
+    return currentPassSummaries.some(
+      (item) => item.patient.bed === alert.bed && item.patient.full_name === alert.name
+    );
+  });
+
+  const roundsSource = visiblePendingPatientSummaries;
 
   const nextPatientForRounds =
     roundsSource.find((item) => item.priority === "Crítico")?.patient.id ||
@@ -365,7 +377,7 @@ export default async function Home({
                 </Link>
 
                 <a
-                  href={nextPatientForRounds ? `/patients/${nextPatientForRounds}` : "#"}
+                  href={nextPatientForRounds ? `/patients/${nextPatientForRounds}${subspecialtyQuery}` : "#"}
                   className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
                 >
                   Iniciar Pase
@@ -415,7 +427,7 @@ export default async function Home({
               <div>
                 <h3 className="text-2xl font-bold">☀️ Morning Report</h3>
                 <p className="text-sm text-slate-400">
-                  Resumen automático del servicio
+                  Resumen automático {selectedSubspecialty === "Todas" ? "del servicio" : `de ${selectedSubspecialty}`}
                 </p>
               </div>
 
@@ -519,7 +531,7 @@ export default async function Home({
 
                     {patientsBySubspecialty[subspecialty].map(({ patient }) => (
                       <a
-                        href={`/patients/${patient.id}`}
+                        href={`/patients/${patient.id}${subspecialtyQuery}`}
                         key={patient.id}
                         className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
                       >

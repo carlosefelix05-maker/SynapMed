@@ -7,10 +7,18 @@ import SynapseProButton from "@/app/components/SynapseProButton";
 
 export default async function PatientPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ subspecialty?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const selectedSubspecialty = query?.subspecialty || "Todas";
+  const subspecialtyQuery =
+    selectedSubspecialty !== "Todas"
+      ? `?subspecialty=${encodeURIComponent(selectedSubspecialty)}`
+      : "";
 
   const { data: patient } = await supabase
     .from("patients")
@@ -41,7 +49,7 @@ export default async function PatientPage({
 
   const { data: allPatients } = await supabase
     .from("patients")
-    .select("id, full_name, bed")
+    .select("id, full_name, bed, subspecialty")
     .order("bed", { ascending: true });
 
   async function createNote(formData: FormData) {
@@ -492,7 +500,12 @@ ANÁLISIS:
 
 PLAN:`;
 
-  const patientList = allPatients ?? [];
+  const patientList =
+    selectedSubspecialty === "Todas"
+      ? allPatients ?? []
+      : (allPatients ?? []).filter(
+          (item) => (item.subspecialty || "Medicina Interna") === selectedSubspecialty
+        );
   const currentPatientIndex = patientList.findIndex((item) => item.id === id);
   const previousPatient = currentPatientIndex > 0 ? patientList[currentPatientIndex - 1] : null;
   const nextPatient =
@@ -504,14 +517,14 @@ PLAN:`;
     <main className="min-h-screen bg-[#061325] p-8 text-white">
       <div className="mx-auto max-w-6xl">
         <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <Link href="/" className="text-sm text-cyan-300">
-            ← Volver a Rounds
+          <Link href={`/${subspecialtyQuery}`} className="text-sm text-cyan-300">
+            ← Volver a Rounds{selectedSubspecialty !== "Todas" ? ` · ${selectedSubspecialty}` : ""}
           </Link>
 
           <div className="flex flex-wrap gap-3">
             {previousPatient ? (
               <Link
-                href={`/patients/${previousPatient.id}`}
+                href={`/patients/${previousPatient.id}${subspecialtyQuery}`}
                 className="rounded-xl bg-white/10 px-4 py-2 text-sm text-slate-200 hover:bg-white/20"
               >
                 ← Cama {previousPatient.bed}
@@ -524,7 +537,7 @@ PLAN:`;
 
             {nextPatient ? (
               <Link
-                href={`/patients/${nextPatient.id}`}
+                href={`/patients/${nextPatient.id}${subspecialtyQuery}`}
                 className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950"
               >
                 Cama {nextPatient.bed} →
@@ -870,7 +883,11 @@ PLAN R++:
             </div>
 
             <form action={createNote} className="mb-6 rounded-2xl bg-[#071A2F] p-4">
-              <NoteTemplateSelector today={today} defaultTemplate={plantillaMI} />
+              <NoteTemplateSelector
+                today={today}
+                defaultTemplate={plantillaMI}
+                subspecialty={patient.subspecialty}
+              />
 
               <button
                 type="submit"

@@ -5,6 +5,7 @@ import { useState } from "react";
 type Props = {
   today: string;
   defaultTemplate: string;
+  subspecialty?: string | null;
 };
 
 const templates = {
@@ -29,76 +30,116 @@ PLAN:`,
   cardio: {
     label: "Cardiología",
     title: "Evolución Cardiología",
-    content: `AL PASE DE VISITA SE ENCUENTRA PACIENTE CON ESTABILIDAD HEMODINÁMICA AL MOMENTO. NIEGA DOLOR TORÁCICO, PALPITACIONES O DISNEA EN REPOSO.
+    content: `AL PASE DE VISITA SE VALORA PACIENTE CON ENFOQUE CARDIOLÓGICO. INTERROGAR DOLOR TORÁCICO, DISNEA, ORTOPNEA, DISNEA PAROXÍSTICA NOCTURNA, PALPITACIONES, SÍNCOPE, EDEMA Y TOLERANCIA AL ESFUERZO.
 
-CARDIOVASCULAR:
-Ruidos cardiacos rítmicos, valorar soplos, datos de congestión, perfusión distal y clase funcional.
+EXPLORACIÓN CARDIOVASCULAR:
+ESTADO HEMODINÁMICO:
+RITMO Y FRECUENCIA:
+RUIDOS CARDIACOS / SOPLOS:
+DATOS DE CONGESTIÓN: ingurgitación yugular, estertores, hepatomegalia, edema.
+DATOS DE BAJO GASTO: piel fría, llenado capilar, oliguria, alteración neurológica.
 
-PARACLÍNICOS:
+PARACLÍNICOS CARDIOLÓGICOS:
 EKG:
-Biomarcadores:
-Ecocardiograma:
+TROPONINA / BIOMARCADORES:
+BNP/NT-proBNP:
+ECOCARDIOGRAMA / FEVI:
+RX/TAC SI APLICA:
 
 ANÁLISIS CARDIOLÓGICO:
+Paciente con patología cardiovascular en seguimiento. Valorar síndrome coronario agudo, insuficiencia cardiaca agudizada, arritmia, congestión, perfusión, clase funcional NYHA y estadio hemodinámico. Correlacionar clínica con EKG, biomarcadores, BNP y ecocardiograma.
 
 PLAN:`,
   },
   nefro: {
     label: "Nefrología",
     title: "Evolución Nefrología",
-    content: `AL PASE DE VISITA SE VALORA FUNCIÓN RENAL, DIURESIS, BALANCE HÍDRICO, ELECTROLITOS Y DATOS URÉMICOS.
+    content: `AL PASE DE VISITA SE VALORA PACIENTE CON ENFOQUE NEFROLÓGICO. INTERROGAR DIURESIS, DATOS URÉMICOS, NÁUSEA, VÓMITO, PRURITO, ALTERACIÓN DEL ESTADO NEUROLÓGICO, DISNEA, EDEMA Y TOLERANCIA A LA VÍA ORAL.
 
-EXPLORACIÓN:
-Estado neurológico, datos de sobrecarga hídrica, edema, perfusión distal.
+EXPLORACIÓN NEFROLÓGICA:
+ESTADO NEUROLÓGICO / DATOS URÉMICOS:
+ESTADO DE VOLEMIA:
+DATOS DE SOBRECARGA HÍDRICA:
+EDEMA:
+PERFUSIÓN DISTAL:
+ACCESO VASCULAR / TENCKHOFF SI APLICA:
 
-PARACLÍNICOS:
-Azoados:
-Electrolitos:
-Diuresis:
-Balance:
+PARACLÍNICOS NEFROLÓGICOS:
+AZOADOS: Urea/BUN/Creatinina.
+ELECTROLITOS: Na, K, Cl, Ca, P, Mg.
+EQUILIBRIO ÁCIDO-BASE:
+DIURESIS:
+BALANCE HÍDRICO:
+EGO / PROTEINURIA SI APLICA:
 
 ANÁLISIS NEFROLÓGICO:
+Paciente con compromiso renal en seguimiento. Diferenciar ERC vs LRA o agudización de ERC, valorar KDIGO, tendencia de azoados, hiperkalemia, acidosis, sobrecarga hídrica, uremia, nefrotóxicos y criterios de terapia sustitutiva renal.
 
 PLAN:`,
   },
   neumo: {
     label: "Neumología",
     title: "Evolución Neumología",
-    content: `AL PASE DE VISITA SE VALORA PATRÓN RESPIRATORIO, OXIGENACIÓN, TRABAJO VENTILATORIO Y RESPUESTA A OXÍGENO SUPLEMENTARIO.
+    content: `AL PASE DE VISITA SE VALORA PACIENTE CON ENFOQUE NEUMOLÓGICO. INTERROGAR DISNEA, TOS, EXPECTORACIÓN, DOLOR TORÁCICO, FIEBRE, HEMOPTISIS, TOLERANCIA AL OXÍGENO Y TRABAJO RESPIRATORIO.
 
-RESPIRATORIO:
-Expansión torácica, murmullo vesicular, estertores/sibilancias, SatO2, dispositivo de oxígeno.
+EXPLORACIÓN RESPIRATORIA:
+PATRÓN RESPIRATORIO:
+USO DE MÚSCULOS ACCESORIOS:
+EXPANSIÓN TORÁCICA:
+MURMULLO VESICULAR:
+ESTERTORES / SIBILANCIAS:
+SATURACIÓN Y DISPOSITIVO DE OXÍGENO:
 
-PARACLÍNICOS:
-Gasometría:
-Imagen:
-Oxígeno actual:
+PARACLÍNICOS NEUMOLÓGICOS:
+GASOMETRÍA:
+RX/TAC DE TÓRAX:
+OXIGENOTERAPIA / VMNI / VMI:
+RELACIÓN PaO2/FiO2 SI APLICA:
+MARCADORES INFLAMATORIOS:
 
 ANÁLISIS NEUMOLÓGICO:
+Paciente con patología respiratoria en seguimiento. Valorar insuficiencia respiratoria, neumonía, EPOC/asma, congestión pulmonar, TEP si hay datos, necesidad de oxígeno, VMNI/VMI y respuesta al manejo. Correlacionar clínica, gasometría e imagen.
 
 PLAN:`,
   },
   uci: {
     label: "Terapia Intensiva",
     title: "Evolución UCI",
-    content: `PACIENTE EN ESTADO CRÍTICO CON MONITOREO CONTINUO.
+    content: `PACIENTE EN ESTADO CRÍTICO CON MONITOREO CONTINUO. VALORAR DE FORMA SISTEMÁTICA NEUROLÓGICO, HEMODINÁMICO, RESPIRATORIO, RENAL, METABÓLICO E INFECCIOSO.
 
 NEUROLÓGICO:
-Glasgow/RASS, sedación, pupilas, focalización.
+Glasgow/RASS:
+Sedación/analgesia:
+Pupilas/focalización:
+Delirium/convulsiones si aplica:
 
 HEMODINÁMICO:
-PAM, FC, ritmo, vasopresores/inotrópicos, lactato.
+PAM/FC/RITMO:
+Vasopresores/inotrópicos:
+Lactato/perfusión:
+Llenado capilar/diuresis:
 
 RESPIRATORIO:
-Modo ventilatorio, FiO2, PEEP, VT, presiones, gasometría.
+Modo ventilatorio:
+FiO2 / PEEP / VT / FR:
+Presiones / mecánica ventilatoria:
+Gasometría:
+PaO2/FiO2:
 
 RENAL/METABÓLICO:
-Diuresis, balance, azoados, electrolitos, glucosa.
+Diuresis:
+Balance hídrico:
+Azoados/electrolitos:
+Glucosa:
 
 INFECCIOSO:
-Foco, cultivos, antibióticos.
+Foco probable:
+Cultivos:
+Antibióticos:
+PCT/PCR/leucocitos:
 
 ANÁLISIS UCI:
+Paciente crítico en seguimiento. Jerarquizar choque, insuficiencia respiratoria, ventilación mecánica, sedoanalgesia, vasopresores, balance hídrico, función renal, control infeccioso, nutrición y prevención de complicaciones asociadas a UCI.
 
 PLAN:`,
   },
@@ -171,10 +212,25 @@ PLAN:`,
 
 type TemplateKey = keyof typeof templates;
 
-export default function NoteTemplateSelector({ today, defaultTemplate }: Props) {
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>("mi");
-  const [content, setContent] = useState(defaultTemplate || templates.mi.content);
-  const [title, setTitle] = useState(`${templates.mi.title} ${today}`);
+function templateKeyFromSubspecialty(subspecialty?: string | null): TemplateKey {
+  const value = String(subspecialty || "").toLowerCase();
+
+  if (value.includes("cardio")) return "cardio";
+  if (value.includes("nefro")) return "nefro";
+  if (value.includes("neumo")) return "neumo";
+  if (value.includes("terapia") || value.includes("uci") || value.includes("intensiva")) return "uci";
+  if (value.includes("gastro")) return "gastro";
+  if (value.includes("endo")) return "endo";
+  if (value.includes("hema")) return "hema";
+
+  return "mi";
+}
+
+export default function NoteTemplateSelector({ today, defaultTemplate, subspecialty }: Props) {
+  const initialTemplate = templateKeyFromSubspecialty(subspecialty);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey>(initialTemplate);
+  const [content, setContent] = useState(defaultTemplate || templates[initialTemplate].content);
+  const [title, setTitle] = useState(`${templates[initialTemplate].title} ${today}`);
 
   function changeTemplate(value: TemplateKey) {
     setSelectedTemplate(value);
