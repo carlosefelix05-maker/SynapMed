@@ -1,10 +1,9 @@
-
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { getImageClinicalContext } from "@/lib/image-context";
 
 function formatLabs(lab: any) {
   if (!lab) return "Sin laboratorios recientes capturados.";
@@ -107,6 +106,8 @@ export async function POST(request: Request) {
           }))
       : [];
 
+    const imageClinicalContext = await getImageClinicalContext(supabase, patientId);
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
@@ -122,6 +123,7 @@ REGLAS:
 - No incluyas advertencias legales ni menciones que eres IA.
 - Prioriza riesgos cardiaco, pulmonar, renal, hematológico, metabólico e infeccioso.
 - Usa lenguaje claro para nota médica.
+- Si existen imágenes cargadas e interpretadas, intégralas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
 
 PACIENTE:
 ${JSON.stringify(patient, null, 2)}
@@ -137,6 +139,9 @@ ${JSON.stringify(latestLab, null, 2)}
 
 EVOLUCIONES RECIENTES:
 ${JSON.stringify(recentClinicalNotes, null, 2)}
+
+IMÁGENES CARGADAS EN EXPEDIENTE:
+${imageClinicalContext}
 
 FORMATO OBLIGATORIO:
 
