@@ -27,6 +27,16 @@ export default async function PatientImagePage({
     );
   }
 
+  const imagePath = image.image_url?.includes("/patient-images/")
+    ? image.image_url.split("/patient-images/").pop()
+    : image.image_url;
+
+  const { data: signedImage } = await supabase.storage
+    .from("patient-images")
+    .createSignedUrl(imagePath, 60 * 10);
+
+  const imageSrc = signedImage?.signedUrl;
+
   return (
     <main className="min-h-screen bg-[#061325] p-8 text-white">
       <div className="mx-auto max-w-6xl">
@@ -41,9 +51,15 @@ export default async function PatientImagePage({
             {new Date(image.created_at).toLocaleString("es-MX")}
           </p>
 
+          {!imageSrc && (
+            <p className="mt-6 rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-200">
+              No se pudo generar una URL segura para esta imagen.
+            </p>
+          )}
+
           <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-black/30">
             <img
-              src={image.image_url}
+              src={imageSrc || ""}
               alt={image.title || "Imagen clínica"}
               className="max-h-[80vh] w-full object-contain"
             />
