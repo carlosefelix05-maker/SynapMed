@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 type UserContext = {
   name: string;
@@ -33,22 +34,31 @@ export default function LogoutButton() {
         .eq("id", user.id)
         .maybeSingle();
 
-      const { data: membership } = await supabase
+      const { data: membership, error: membershipError } = await supabase
         .from("team_members")
         .select("role, team_id")
         .eq("user_id", user.id)
+        .eq("team_id", CURRENT_TEAM_ID)
         .maybeSingle();
 
-      let teamName = "Sin equipo";
+      if (membershipError) {
+        console.error("Error leyendo membresía:", membershipError);
+      }
+
+      let teamName = "SynapMed HGZ 49";
 
       if (membership?.team_id) {
-        const { data: team } = await supabase
+        const { data: team, error: teamError } = await supabase
           .from("teams")
           .select("name")
           .eq("id", membership.team_id)
           .maybeSingle();
 
-        teamName = team?.name || "Equipo";
+        if (teamError) {
+          console.error("Error leyendo equipo:", teamError);
+        }
+
+        teamName = team?.name || "SynapMed HGZ 49";
       }
 
       if (!mounted) return;
