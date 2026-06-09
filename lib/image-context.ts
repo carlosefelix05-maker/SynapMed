@@ -129,5 +129,5 @@ IMPRESIÓN CLÍNICA PRELIMINAR:
       .filter(Boolean)
       .join("\n\n") || "No se obtuvo interpretación útil de las imágenes.";
 
-  return `Contexto de imágenes del expediente:\nIMÁGENES_ANALIZADAS_POR_IA: SÍ\nINDICACIÓN PARA LA NOTA: debes mencionar explícitamente este apartado en la respuesta final, aunque sea de forma breve. No lo omitas.\n\n${imageAnalysis}`;
+  return `Contexto de imágenes del expediente:\nIMÁGENES_ANALIZADAS_POR_IA: SÍ\nINTERPRETACIÓN_PRELIMINAR_POR_IA: SÍ\nINDICACIÓN PARA LA NOTA: debes mencionar explícitamente los hallazgos visibles descritos abajo. No respondas únicamente que no hay reporte formal de Imagenología. Si no hay reporte formal, aclara que lo siguiente es una lectura clínica preliminar por IA.\n\n${imageAnalysis}`;
 }

@@ -167,7 +167,7 @@ REGLAS:
 - No copies literalmente evoluciones previas; integra y actualiza.
 - Si hay discordancia documental, menciónala de forma breve en análisis.
 - Usa PROBLEMAS ACTIVOS como eje principal de la nota.
-- Si existen imágenes cargadas e interpretadas, DEBES incluir una frase o apartado breve sobre "Imágenes del expediente" en el análisis de la evolución. No lo omitas. Úsalas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
+- Si existen imágenes cargadas e interpretadas, DEBES incluir una frase o apartado breve sobre "Imágenes del expediente" en el análisis de la evolución. No lo omitas. Si aparece IMÁGENES_ANALIZADAS_POR_IA: SÍ, resume los hallazgos visibles aportados por la IA. No respondas solo que no hay reporte formal de Imagenología; aclara que es lectura clínica preliminar por IA.
 - Si existen problemas activos registrados, redacta el análisis y plan por problemas.
 - Prioriza problemas Crítico y Alta antes que Media o Baja.
 - Los problemas Resueltos solo se mencionan si modifican conducta actual.
