@@ -39,6 +39,20 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: currentMembership } = user
+    ? await supabase
+        .from("team_members")
+        .select("role")
+        .eq("team_id", CURRENT_TEAM_ID)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const isAdmin = currentMembership?.role === "admin";
   const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
   const subspecialtyQuery =
     selectedSubspecialty !== "Todas"
@@ -441,13 +455,24 @@ export default async function Home({
               <h2 className="text-3xl font-bold">Dr. Carlos</h2>
             </div>
 
-            <div className="rounded-full bg-white/10 p-1">
-              <button className="rounded-full bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950">
-                Hospital
-              </button>
-              <button className="px-5 py-2 text-sm text-slate-300">
-                Consulta
-              </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {isAdmin && (
+                <Link
+                  href="/configuracion/equipo"
+                  className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-5 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-400/20"
+                >
+                  Configuración del equipo
+                </Link>
+              )}
+
+              <div className="rounded-full bg-white/10 p-1">
+                <button className="rounded-full bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950">
+                  Hospital
+                </button>
+                <button className="px-5 py-2 text-sm text-slate-300">
+                  Consulta
+                </button>
+              </div>
             </div>
           </header>
 
