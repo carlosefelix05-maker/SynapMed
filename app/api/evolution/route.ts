@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { getImageClinicalContext } from "@/lib/image-context";
 
 function formatLabs(lab: any) {
   if (!lab) return "Sin laboratorios recientes capturados.";
@@ -148,6 +149,8 @@ export async function POST(request: Request) {
           }))
       : [];
 
+    const imageClinicalContext = await getImageClinicalContext(supabase, patientId);
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
@@ -164,6 +167,7 @@ REGLAS:
 - No copies literalmente evoluciones previas; integra y actualiza.
 - Si hay discordancia documental, menciónala de forma breve en análisis.
 - Usa PROBLEMAS ACTIVOS como eje principal de la nota.
+- Si existen imágenes cargadas e interpretadas, intégralas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
 - Si existen problemas activos registrados, redacta el análisis y plan por problemas.
 - Prioriza problemas Crítico y Alta antes que Media o Baja.
 - Los problemas Resueltos solo se mencionan si modifican conducta actual.
@@ -185,6 +189,9 @@ ${JSON.stringify(activeProblems, null, 2)}
 
 EVOLUCIONES RECIENTES:
 ${JSON.stringify(recentClinicalNotes, null, 2)}
+
+IMÁGENES CARGADAS EN EXPEDIENTE:
+${imageClinicalContext}
 
 FORMATO OBLIGATORIO:
 
