@@ -137,7 +137,7 @@ IMPRESIÓN CLÍNICA PRELIMINAR:
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash"];
+const modelNames = ["gemini-2.5-flash", "gemini-2.0-flash"];
 
     let imageAnalysis = "";
 
