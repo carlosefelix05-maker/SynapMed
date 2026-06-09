@@ -21,6 +21,37 @@ export const revalidate = 0;
 export default async function TeamSettingsPage() {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: currentMembership } = user
+    ? await supabase
+        .from("team_members")
+        .select("role")
+        .eq("team_id", CURRENT_TEAM_ID)
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const isAdmin = currentMembership?.role === "admin";
+
+  if (!isAdmin) {
+    return (
+      <main className="min-h-screen bg-[#061325] p-6 text-white">
+        <div className="mx-auto max-w-3xl rounded-3xl border border-red-400/30 bg-red-500/10 p-8 shadow-2xl">
+          <Link href="/" className="text-sm text-cyan-300 hover:text-cyan-200">
+            ← Volver al dashboard
+          </Link>
+          <h1 className="mt-6 text-3xl font-bold text-red-100">Acceso restringido</h1>
+          <p className="mt-3 text-sm leading-6 text-red-100/90">
+            Esta sección solo está disponible para administradores del equipo.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const { data: team } = await supabase
     .from("teams")
     .select("id, name")
