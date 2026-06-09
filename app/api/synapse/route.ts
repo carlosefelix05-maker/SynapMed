@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { getImageClinicalContext } from "@/lib/image-context";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -112,6 +113,8 @@ export async function POST(request: Request) {
           }))
       : [];
 
+    const imageClinicalContext = await getImageClinicalContext(supabase, patientId);
+
     const prompt = `Eres Synapse AI v4 R++, un médico internista virtual con nivel de R4/adscrito.
 
 Tu estilo debe parecerse al de un residente de Medicina Interna del IMSS.
@@ -137,9 +140,7 @@ REGLAS:
 - Si existe una evolución posterior, debe ser la base principal del análisis.
 - No repetir literalmente la nota; sintetizar cambios clínicos, mejoría, deterioro o estabilidad.
 - Usar PROBLEMAS ACTIVOS como eje principal del análisis clínico.
-- Si existen problemas activos registrados, el análisis debe organizarse por problema y no solo por sistemas.
-- Los problemas con prioridad Crítico o Alta deben aparecer primero.
-- Los problemas Resueltos deben mencionarse solo si afectan la conducta actual.
+- Si existen imágenes cargadas e interpretadas, intégralas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
 
 ESTILO DE ANÁLISIS:
 - Similar a nota de evolución de Medicina Interna.
@@ -166,6 +167,9 @@ ${JSON.stringify(timeline, null, 2)}
 EVOLUCIONES RECIENTES ORDENADAS POR PRIORIDAD CLÍNICA:
 La primera es la evolución más reciente y debe tener mayor peso en el análisis.
 ${JSON.stringify(recentClinicalNotes, null, 2)}
+
+IMÁGENES CARGADAS EN EXPEDIENTE:
+${imageClinicalContext}
 
 CONTROL DE CALIDAD DOCUMENTAL:
 Antes de redactar, verifica si las evoluciones corresponden al mismo paciente. Si detectas contradicciones de sexo, edad, diagnóstico o servicio entre PACIENTE y las evoluciones, debes señalarlo en ALERTAS CLÍNICAS como "posible discordancia documental" y basar el análisis en los datos más confiables.
