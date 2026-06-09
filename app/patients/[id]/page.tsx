@@ -69,6 +69,26 @@ export default async function PatientPage({
     .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
 
+  const signedImageUrls = new Map<string, string>();
+
+  await Promise.all(
+    (patientImages ?? []).map(async (image) => {
+      const imagePath = image.image_url?.includes("/patient-images/")
+        ? image.image_url.split("/patient-images/").pop()
+        : image.image_url;
+
+      if (!imagePath) return;
+
+      const { data: signedImage } = await supabase.storage
+        .from("patient-images")
+        .createSignedUrl(imagePath, 60 * 10);
+
+      if (signedImage?.signedUrl) {
+        signedImageUrls.set(image.id, signedImage.signedUrl);
+      }
+    })
+  );
+
   const { data: patientTasks } = await supabase
     .from("patient_tasks")
     .select("*")
@@ -1360,7 +1380,7 @@ PLAN R++:
                   >
                     <div className="aspect-video bg-black/30">
                       <img
-                        src={image.image_url}
+                        src={signedImageUrls.get(image.id) || ""}
                         alt={image.title || "Imagen clínica"}
                         className="h-full w-full object-cover"
                       />
