@@ -140,7 +140,7 @@ REGLAS:
 - Si existe una evolución posterior, debe ser la base principal del análisis.
 - No repetir literalmente la nota; sintetizar cambios clínicos, mejoría, deterioro o estabilidad.
 - Usar PROBLEMAS ACTIVOS como eje principal del análisis clínico.
-- Si existen imágenes cargadas e interpretadas, intégralas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
+- Si existen imágenes cargadas e interpretadas, DEBES incluir un apartado breve llamado "Imágenes del expediente" dentro del análisis. No lo omitas. Úsalas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
 
 ESTILO DE ANÁLISIS:
 - Similar a nota de evolución de Medicina Interna.

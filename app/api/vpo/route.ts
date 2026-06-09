@@ -123,7 +123,7 @@ REGLAS:
 - No incluyas advertencias legales ni menciones que eres IA.
 - Prioriza riesgos cardiaco, pulmonar, renal, hematológico, metabólico e infeccioso.
 - Usa lenguaje claro para nota médica.
-- Si existen imágenes cargadas e interpretadas, intégralas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
+- Si existen imágenes cargadas e interpretadas, DEBES incluir un apartado breve llamado "Imágenes del expediente" en la VPO. No lo omitas. Úsalas como apoyo clínico prudente; no sustituyen el reporte formal de Imagenología.
 
 PACIENTE:
 ${JSON.stringify(patient, null, 2)}
