@@ -77,15 +77,22 @@ export async function getImageClinicalContext(
   }
 
   const prompt = `
-Analiza las imágenes clínicas cargadas en el expediente.
+Analiza directamente las imágenes clínicas cargadas en el expediente.
 
-Instrucciones:
-- Describe hallazgos visibles de forma médica y prudente.
-- No inventes diagnóstico.
-- Si la imagen parece radiografía, ultrasonido, TAC, laboratorio fotografiado u otro estudio, menciona el tipo probable.
-- Señala limitaciones de calidad, proyección, recorte o falta de contexto.
-- Entrega un resumen breve útil para Medicina Interna.
-- No sustituyas la interpretación formal de Imagenología.
+IMPORTANTE:
+- Sí debes describir hallazgos visibles.
+- Si la imagen parece tele de tórax, describe: técnica/calidad aproximada, silueta cardiomediastinal, campos pulmonares, senos costofrénicos, patrón intersticial/alveolar, atelectasias, consolidaciones, derrame, neumotórax, dispositivos o material visible.
+- Si no puedes valorar algo, dilo específicamente.
+- No digas simplemente "no interpretar" solo porque no hay reporte de radiología.
+- No sustituyes el reporte formal de Imagenología; tu función es aportar una lectura clínica preliminar y prudente.
+- No inventes hallazgos no visibles.
+- Entrega el resultado en formato breve para expediente de Medicina Interna.
+
+Formato:
+TIPO PROBABLE DE ESTUDIO:
+HALLAZGOS VISIBLES:
+LIMITACIONES:
+IMPRESIÓN CLÍNICA PRELIMINAR:
 `;
 
   const geminiResponse = await fetch(
