@@ -952,7 +952,7 @@ PLAN R++:
 
               {synapseProblems.length > 0 ? (
                 <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-300">
-                  {synapseProblems.map((problem) => (
+                  {synapseProblems.map((problem: string) => (
                     <li key={problem}>{problem}</li>
                   ))}
                 </ol>
@@ -1282,7 +1282,7 @@ PLAN R++:
                           </Link>
                         ) : null}
 
-                        {item.editable && item.noteId ? (
+                        {"editable" in item && item.editable && "noteId" in item && item.noteId ? (
                           <>
                             <Link
                               href={`/patients/${id}/notes/${item.noteId}/edit`}
@@ -1303,7 +1303,7 @@ PLAN R++:
                           </>
                         ) : null}
 
-                        {item.labId ? (
+                        {"labId" in item && item.labId ? (
                           <form action={deleteTimelineLab}>
                             <input type="hidden" name="labId" value={item.labId} />
                             <ConfirmSubmitButton
@@ -1315,7 +1315,7 @@ PLAN R++:
                           </form>
                         ) : null}
 
-                        {item.imageId ? (
+                        {"imageId" in item && item.imageId ? (
                           <form action={deleteTimelineImage}>
                             <input type="hidden" name="imageId" value={item.imageId} />
                             <ConfirmSubmitButton
@@ -1327,7 +1327,7 @@ PLAN R++:
                           </form>
                         ) : null}
 
-                        {item.completedTask && item.taskId ? (
+                        {"completedTask" in item && item.completedTask && "taskId" in item && item.taskId ? (
                           <form action={updatePatientTaskStatus}>
                             <input type="hidden" name="taskId" value={item.taskId} />
                             <input type="hidden" name="status" value="Pendiente" />
