@@ -43,16 +43,12 @@ export default async function NewImagePage({
       throw new Error(uploadError.message);
     }
 
-    const publicUrl = supabase.storage
-      .from("patient-images")
-      .getPublicUrl(uploadData.path).data.publicUrl;
-
     await supabase.from("patient_images").insert({
       patient_id: id,
       team_id: CURRENT_TEAM_ID,
       title: title || "Imagen clínica",
       study_type: studyType || "Imagen",
-      image_url: publicUrl,
+      image_url: uploadData.path,
     });
 
     revalidatePath(`/patients/${id}`);
