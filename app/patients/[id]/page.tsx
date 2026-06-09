@@ -197,7 +197,7 @@ export default async function PatientPage({
       ? problems.map((problem) => `- ${problem.toUpperCase()}`).join("\n")
       : "- DIAGNÓSTICO NO REGISTRADO";
 
-    const generatedContent = `SYNAPSE AI v3 R++
+    const generatedContent = `SYNAPSE AI v4 R++
 
 ${sexUpper} DE ${ageText}, EN ${bedText}, A CARGO DE MEDICINA INTERNA POR LOS DIAGNÓSTICOS DE:
 
@@ -229,7 +229,7 @@ PLAN R++:
       patient_id: id,
       team_id: CURRENT_TEAM_ID,
       type: "Synapse AI",
-      title: `Synapse AI v3 R++ ${new Date().toLocaleDateString("es-MX")}`,
+      title: `Synapse AI v4 R++ ${new Date().toLocaleDateString("es-MX")}`,
       content: generatedContent,
     });
 
@@ -915,7 +915,7 @@ PLAN R++:
 
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-300">
-                v3 R++
+                v4 R++
               </span>
 
               <EvolutionGeneratorButton patientId={id} />
@@ -936,7 +936,7 @@ PLAN R++:
           <p className="mb-5 leading-7 text-slate-200">{synapseSummary}</p>
 
           <div className="mb-5 rounded-2xl border border-cyan-400/20 bg-[#071A2F] p-4">
-            <h3 className="mb-2 font-semibold text-cyan-300">Borrador Synapse AI v3 R++</h3>
+            <h3 className="mb-2 font-semibold text-cyan-300">Borrador Synapse AI v4 R++</h3>
             <p className="whitespace-pre-wrap text-sm leading-6 text-slate-300">
 {`ANÁLISIS R++:
 ${synapseAnalysis}
