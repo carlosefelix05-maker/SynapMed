@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import LogoutButton from "@/app/components/LogoutButton";
 import type { Session } from "@supabase/supabase-js";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -64,10 +63,5 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return (
-    <>
-      {!isPublicRoute ? <LogoutButton /> : null}
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

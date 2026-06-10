@@ -113,9 +113,9 @@ export default function LogoutButton() {
   }
 
   return (
-    <div className="fixed right-4 top-4 z-50 flex items-center gap-3 rounded-2xl border border-white/10 bg-[#071A2F]/90 px-4 py-3 text-sm shadow-lg backdrop-blur">
-      <div className="hidden text-right md:block">
-        <p className="font-semibold text-slate-100">
+<div className="w-full rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl">
+      <div className="mb-3 text-left">
+          <p className="font-semibold text-slate-100">
           {userContext?.name || "SynapMed"}
         </p>
         <p className="text-xs text-slate-400">
@@ -123,11 +123,11 @@ export default function LogoutButton() {
         </p>
       </div>
 
-      <button
+            <button
         type="button"
         onClick={handleLogout}
         disabled={loading}
-        className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/20 disabled:opacity-60"
+        className="w-full rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/20 disabled:opacity-60"
       >
         {loading ? "Cerrando..." : "Cerrar sesión"}
       </button>

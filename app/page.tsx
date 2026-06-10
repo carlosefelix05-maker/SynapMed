@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import LogoutButton from "@/app/components/LogoutButton";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -426,7 +427,7 @@ export default async function Home({
   return (
     <main className="min-h-screen bg-[#071A2F] text-white">
       <div className="flex min-h-screen">
-        <aside className="hidden w-72 border-r border-white/10 bg-[#061527] p-6 lg:block">
+<aside className="hidden w-72 flex-col border-r border-white/10 bg-[#061527] p-6 lg:flex">
           <h1 className="text-2xl font-bold">SynapMed</h1>
           <p className="mb-8 text-xs text-cyan-300">
             Conectando la inteligencia médica
@@ -446,6 +447,11 @@ export default async function Home({
               </button>
             )
           )}
+
+          
+          <div className="mt-auto pt-8">
+  <LogoutButton />
+</div>
         </aside>
 
         <section className="flex-1 p-8">
