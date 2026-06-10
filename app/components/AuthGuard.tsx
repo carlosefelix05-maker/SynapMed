@@ -11,7 +11,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
   const [checking, setChecking] = useState(true);
 
-  const isPublicRoute = pathname === "/login";
+  const publicRoutes = ["/login", "/register", "/forgot-password"];
+  const isPublicRoute = publicRoutes.includes(pathname);
 
   useEffect(() => {
     let mounted = true;

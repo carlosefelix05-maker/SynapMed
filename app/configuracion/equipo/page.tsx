@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { revalidatePath } from "next/cache";
 
 type Membership = {
   user_id: string;
@@ -35,6 +36,82 @@ export default async function TeamSettingsPage() {
     : { data: null };
 
   const isAdmin = currentMembership?.role === "admin";
+  async function addTeamMember(formData: FormData) {
+    "use server";
+
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const role = String(formData.get("role") || "medico").trim();
+
+    if (!email) {
+      throw new Error("Escribe el correo del usuario.");
+    }
+
+    const allowedRoles = ["admin", "medico", "residente", "interno"];
+    const finalRole = allowedRoles.includes(role) ? role : "medico";
+
+    const supabase = await createClient();
+
+    const { error } = await supabase.rpc("add_team_member_by_email", {
+      target_email: email,
+      target_role: finalRole,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
+
+  async function updateTeamMemberRole(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("user_id") || "").trim();
+    const role = String(formData.get("role") || "medico").trim();
+
+    if (!userId) {
+      throw new Error("No se encontró el usuario a editar.");
+    }
+
+    const allowedRoles = ["admin", "medico", "residente", "interno"];
+    const finalRole = allowedRoles.includes(role) ? role : "medico";
+
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("update_team_member_role", {
+      target_user_id: userId,
+      target_role: finalRole,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
+
+  async function removeTeamMember(formData: FormData) {
+    "use server";
+
+    const userId = String(formData.get("user_id") || "").trim();
+
+    if (!userId) {
+      throw new Error("No se encontró el usuario a eliminar.");
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("remove_team_member", {
+      target_user_id: userId,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
 
   if (!isAdmin) {
     return (
@@ -101,6 +178,53 @@ export default async function TeamSettingsPage() {
           </p>
         </section>
 
+        <section className="mt-6 rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-6 shadow-2xl">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold text-white">Agregar miembro</h2>
+            <p className="mt-1 text-sm text-slate-300">
+              El usuario debe tener una cuenta creada en SynapMed. Escríbele el correo y asigna su rol.
+            </p>
+          </div>
+
+          <form action={addTeamMember} className="grid gap-4 md:grid-cols-[1fr_180px_auto] md:items-end">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Correo del usuario
+              </label>
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="usuario@correo.com"
+                className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/60"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Rol
+              </label>
+              <select
+                name="role"
+                defaultValue="medico"
+                className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="medico">Médico</option>
+                <option value="residente">Residente</option>
+                <option value="interno">Interno</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-cyan-300"
+            >
+              Agregar
+            </button>
+          </form>
+        </section>
+
         {membershipsError && (
           <section className="mt-6 rounded-3xl border border-red-400/30 bg-red-500/10 p-6 text-red-100">
             <h2 className="text-lg font-semibold">Error cargando miembros</h2>
@@ -126,6 +250,7 @@ export default async function TeamSettingsPage() {
                   <th className="px-4 py-3 font-semibold">Correo</th>
                   <th className="px-4 py-3 font-semibold">Rol en equipo</th>
                   <th className="px-4 py-3 font-semibold">User ID</th>
+                  <th className="px-4 py-3 font-semibold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,13 +277,46 @@ export default async function TeamSettingsPage() {
                           {member.user_id}
                         </span>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex min-w-64 flex-col gap-3">
+                          <form action={updateTeamMemberRole} className="flex flex-col gap-2">
+                            <input type="hidden" name="user_id" value={member.user_id} />
+                            <select
+                              name="role"
+                              defaultValue={member.role || profile?.role || "medico"}
+                              className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-2 text-sm text-white outline-none focus:border-cyan-300/60"
+                            >
+                              <option value="medico">Médico</option>
+                              <option value="residente">Residente</option>
+                              <option value="interno">Interno</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                            <button
+                              type="submit"
+                              className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
+                            >
+                              Guardar rol
+                            </button>
+                          </form>
+
+                          <form action={removeTeamMember}>
+                            <input type="hidden" name="user_id" value={member.user_id} />
+                            <button
+                              type="submit"
+                              className="w-full rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-2 text-sm font-bold text-red-200 hover:bg-red-400/20"
+                            >
+                              Eliminar del equipo
+                            </button>
+                          </form>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
 
                 {members.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                       No hay miembros registrados en este equipo.
                     </td>
                   </tr>
@@ -171,9 +329,9 @@ export default async function TeamSettingsPage() {
         <section className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-400/10 p-6 text-amber-100">
           <h2 className="text-lg font-semibold">Nota de seguridad</h2>
           <p className="mt-2 text-sm leading-6">
-            Por ahora esta pantalla es de solo lectura. Para agregar usuarios, primero deben existir en
-            Supabase Auth y luego agregarse a <span className="font-mono">team_members</span>.
-            El siguiente paso será agregar acciones seguras para cambiar roles o agregar miembros desde aquí.
+            Esta pantalla permite agregar miembros sin entrar a Supabase. El usuario debe existir primero
+            en Auth/perfiles de SynapMed. La inserción se realiza mediante una función segura RPC y solo
+            los administradores del equipo pueden ejecutarla. Editar rol o eliminar usuario solo modifica su membresía del equipo; no borra su cuenta de Supabase Auth.
           </p>
         </section>
       </div>

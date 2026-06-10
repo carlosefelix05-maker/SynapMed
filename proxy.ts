@@ -38,6 +38,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const isLoginPage = pathname === "/login";
+  const isRegisterPage = pathname === "/register";
   const isPublicAsset =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -48,14 +49,14 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isRegisterPage) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirectedFrom", pathname);
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && isLoginPage) {
+  if (user && (isLoginPage || isRegisterPage)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     redirectUrl.search = "";
