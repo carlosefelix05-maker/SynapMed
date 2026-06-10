@@ -53,6 +53,24 @@ export default async function Home({
         .maybeSingle()
     : { data: null };
 
+  const { data: currentProfile } = user
+    ? await supabase
+        .from("profiles")
+        .select("full_name, email, role")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const currentUserName =
+    currentProfile?.full_name || currentProfile?.email || user?.email || "Usuario";
+
+  const currentUserRole = currentMembership?.role || currentProfile?.role || "medico";
+
+  const displayUserName =
+  currentUserName.startsWith("Dr.") || currentUserName.startsWith("Dra.")
+    ? currentUserName
+    : `Dr. ${currentUserName}`;
+
   const isAdmin = currentMembership?.role === "admin";
   const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
   const subspecialtyQuery =
@@ -458,7 +476,7 @@ export default async function Home({
           <header className="mb-8 flex items-center justify-between">
             <div>
               <p className="text-slate-400">Buenos días,</p>
-              <h2 className="text-3xl font-bold">Dr. Carlos</h2>
+              <h2 className="text-3xl font-bold">{displayUserName}</h2>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
