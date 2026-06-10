@@ -37,6 +37,25 @@ export default async function PatientPage({
     .eq("patient_id", id)
     .eq("team_id", CURRENT_TEAM_ID)
     .order("created_at", { ascending: false });
+    const noteAuthorIds = Array.from(
+  new Set((notes ?? []).map((note) => note.created_by).filter(Boolean))
+) as string[];
+
+const { data: noteAuthors } = noteAuthorIds.length
+  ? await supabase
+      .from("profiles")
+      .select("id, full_name, email, role")
+      .in("id", noteAuthorIds)
+  : { data: [] };
+
+const noteAuthorMap = new Map(
+  ((noteAuthors ?? []) as Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    role: string | null;
+  }>).map((profile) => [profile.id, profile])
+);
 
   const { data: latestLabs } = await supabase
     .from("labs")
@@ -105,6 +124,9 @@ export default async function PatientPage({
   async function createNote(formData: FormData) {
     "use server";
     const supabase = await createClient();
+    const {
+  data: { user },
+} = await supabase.auth.getUser();
 
     const title = String(formData.get("title") ?? "").trim();
     const content = String(formData.get("content") ?? "").trim();
@@ -114,12 +136,13 @@ export default async function PatientPage({
     }
 
     await supabase.from("notes").insert({
-      patient_id: id,
-      team_id: CURRENT_TEAM_ID,
-      type: "progress",
-      title,
-      content,
-    });
+  patient_id: id,
+  team_id: CURRENT_TEAM_ID,
+  created_by: user?.id ?? null,
+  type: "progress",
+  title,
+  content,
+});
 
     revalidatePath(`/patients/${id}`);
   }
@@ -127,7 +150,9 @@ export default async function PatientPage({
   async function createSynapseNote() {
     "use server";
     const supabase = await createClient();
-
+const {
+  data: { user },
+} = await supabase.auth.getUser();
     const { data: patientData } = await supabase
       .from("patients")
       .select("*")
@@ -228,6 +253,7 @@ PLAN R++:
     await supabase.from("notes").insert({
       patient_id: id,
       team_id: CURRENT_TEAM_ID,
+      created_by: user?.id ?? null,
       type: "Synapse AI",
       title: `Synapse AI v4 R++ ${new Date().toLocaleDateString("es-MX")}`,
       content: generatedContent,
@@ -524,16 +550,21 @@ PLAN R++:
   }
 
   const timelineItems = [
-   ...(notes ?? []).map((note) => ({
-  id: `note-${note.id}`,
-  type: note.type || "Nota",
-  date: note.created_at,
-  title: note.title || "Nota médica",
-  description: note.type || "Nota clínica",
-  href: `/patients/${id}/notes/${note.id}`,
-  noteId: note.id,
-  editable: true,
-})),
+   ...(notes ?? []).map((note) => {
+  const author = note.created_by ? noteAuthorMap.get(note.created_by) : null;
+  const authorName = author?.full_name || author?.email || "No registrado";
+
+  return {
+    id: `note-${note.id}`,
+    type: note.type || "Nota",
+    date: note.created_at,
+    title: note.title || "Nota médica",
+    description: `${note.type || "Nota clínica"} · Elaboró: ${authorName}`,
+    href: `/patients/${id}/notes/${note.id}`,
+    noteId: note.id,
+    editable: true,
+  };
+}),
     ...(labHistory ?? []).map((lab) => ({
       id: `lab-${lab.id}`,
       type: "Labs",

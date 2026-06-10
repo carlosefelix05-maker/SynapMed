@@ -28,6 +28,20 @@ export default async function NoteDetailPage({
     .eq("patient_id", id)
     .single();
 
+  const { data: authorProfile } = note?.created_by
+    ? await supabase
+        .from("profiles")
+        .select("full_name, email, role")
+        .eq("id", note.created_by)
+        .maybeSingle()
+    : { data: null };
+
+  const authorLabel = authorProfile
+    ? `${authorProfile.full_name || authorProfile.email || "Usuario"}${
+        authorProfile.role ? ` · ${authorProfile.role}` : ""
+      }`
+    : "No registrado";
+
   async function deleteNote() {
     "use server";
     const supabase = await createClient();
@@ -73,6 +87,7 @@ export default async function NoteDetailPage({
             <div className="mt-6 rounded-2xl bg-[#071A2F] p-5">
               <p className="font-bold text-white">{note.title || "Nota médica"}</p>
               <p className="mt-1 text-sm text-slate-500">{note.type || "Nota médica"}</p>
+              <p className="mt-1 text-xs text-slate-500">Elaboró: {authorLabel}</p>
               <p className="mt-4 line-clamp-5 whitespace-pre-wrap text-sm leading-6 text-slate-300">
                 {note.content || "Sin contenido."}
               </p>
@@ -117,6 +132,9 @@ export default async function NoteDetailPage({
             <p className="mt-2 text-slate-400">
               Cama {patient.bed} · {patient.full_name} · {note.type || "Nota médica"}
             </p>
+            <p className="mt-2 text-sm text-slate-400">
+  Elaboró: <span className="font-semibold text-slate-200">{authorLabel}</span>
+</p>
           </div>
 
           <div className="flex flex-wrap gap-3">

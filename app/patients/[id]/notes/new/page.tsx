@@ -71,6 +71,10 @@ Continuar vigilancia clínica; actualizar laboratorios según evolución; revalo
 
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const type = String(formData.get("type") ?? "").trim();
     const title = String(formData.get("title") ?? "").trim();
     const content = String(formData.get("content") ?? "").trim();
@@ -82,6 +86,7 @@ Continuar vigilancia clínica; actualizar laboratorios según evolución; revalo
     await supabase.from("notes").insert({
       patient_id: id,
       team_id: CURRENT_TEAM_ID,
+      created_by: user?.id ?? null,
       type: type || "Progress Note",
       title,
       content,
