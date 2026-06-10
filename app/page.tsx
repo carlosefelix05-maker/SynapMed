@@ -451,20 +451,28 @@ export default async function Home({
             Conectando la inteligencia médica
           </p>
 
-          {["Synapse", "Census", "Rounds", "Patients", "Notes", "Calc", "Drugs", "Protocols"].map(
-            (item) => (
-              <button
-                key={item}
-                className={`mb-2 w-full rounded-xl px-4 py-3 text-left text-sm ${
-                  item === "Census"
-                    ? "bg-cyan-400 font-semibold text-slate-950"
-                    : "text-slate-300 hover:bg-white/10"
-                }`}
-              >
-                {item}
-              </button>
-            )
-          )}
+          {[
+  { label: "Synapse", href: "/" },
+  { label: "Census", href: "/" },
+  { label: "Rounds", href: "/" },
+  { label: "Patients", href: "/patients/new" },
+  { label: "Notes", href: "/" },
+  { label: "Calc", href: "/" },
+  { label: "Drugs", href: "/" },
+  { label: "Protocols", href: "/" },
+].map((item) => (
+  <Link
+    key={item.label}
+    href={item.href}
+    className={`mb-2 w-full rounded-xl px-4 py-3 text-left text-sm ${
+      item.label === "Census"
+        ? "bg-cyan-400 font-semibold text-slate-950"
+        : "text-slate-300 hover:bg-white/10"
+    }`}
+  >
+    {item.label}
+  </Link>
+))}
 
           
           <div className="mt-auto pt-8">
