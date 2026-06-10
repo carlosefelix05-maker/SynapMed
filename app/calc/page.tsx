@@ -363,11 +363,10 @@ function MechanicalVentilationCalculator() {
 
   const result = useMemo(() => {
     const cm = toNumber(height);
-    const inchesOverFiveFeet = Math.max(0, cm / 2.54 - 60);
-    const pbw =
-      sex === "M"
-        ? 50 + 2.3 * inchesOverFiveFeet
-        : 45.5 + 2.3 * inchesOverFiveFeet;
+const pbw =
+  sex === "M"
+    ? 50 + 0.91 * (cm - 152.4)
+    : 45.5 + 0.91 * (cm - 152.4);
     const vt4 = pbw * 4;
     const vt6 = pbw * 6;
     const vt8 = pbw * 8;
