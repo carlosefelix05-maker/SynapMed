@@ -351,6 +351,113 @@ function RenalAnticoagulationCalculator() {
   );
 }
 
+function MechanicalVentilationCalculator() {
+  const [sex, setSex] = useState("M");
+  const [height, setHeight] = useState("170");
+  const [vt, setVt] = useState("420");
+  const [rr, setRr] = useState("18");
+  const [plateau, setPlateau] = useState("24");
+  const [peep, setPeep] = useState("8");
+  const [pao2, setPao2] = useState("80");
+  const [fio2, setFio2] = useState("40");
+
+  const result = useMemo(() => {
+    const cm = toNumber(height);
+    const inchesOverFiveFeet = Math.max(0, cm / 2.54 - 60);
+    const pbw =
+      sex === "M"
+        ? 50 + 2.3 * inchesOverFiveFeet
+        : 45.5 + 2.3 * inchesOverFiveFeet;
+    const vt4 = pbw * 4;
+    const vt6 = pbw * 6;
+    const vt8 = pbw * 8;
+    const tidalVolume = toNumber(vt);
+    const respiratoryRate = toNumber(rr);
+    const minuteVentilation = (tidalVolume * respiratoryRate) / 1000;
+    const drivingPressure = toNumber(plateau) - toNumber(peep);
+    const fractionInspiredOxygen = toNumber(fio2) > 1 ? toNumber(fio2) / 100 : toNumber(fio2);
+    const pfRatio = fractionInspiredOxygen > 0 ? toNumber(pao2) / fractionInspiredOxygen : 0;
+
+    let ardsSeverity = "Sin clasificar";
+    if (pfRatio <= 100) ardsSeverity = "SDRA severo si PEEP ≥5";
+    else if (pfRatio <= 200) ardsSeverity = "SDRA moderado si PEEP ≥5";
+    else if (pfRatio <= 300) ardsSeverity = "SDRA leve si PEEP ≥5";
+    else ardsSeverity = "Oxigenación conservada o sin SDRA por P/F";
+
+    return {
+      pbw,
+      vt4,
+      vt6,
+      vt8,
+      minuteVentilation,
+      drivingPressure,
+      pfRatio,
+      ardsSeverity,
+    };
+  }, [sex, height, vt, rr, plateau, peep, pao2, fio2]);
+
+  return (
+    <section id="vmi" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Ventilación mecánica invasiva</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          PBW, volumen tidal protector, ventilación minuto, driving pressure y relación P/F.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <label className="block">
+          <span className="mb-2 block text-sm font-semibold text-slate-300">Sexo</span>
+          <select
+            value={sex}
+            onChange={(event) => setSex(event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+          >
+            <option value="M">Masculino</option>
+            <option value="F">Femenino</option>
+          </select>
+        </label>
+        <Field label="Talla" value={height} onChange={setHeight} suffix="cm" />
+        <Field label="VT actual" value={vt} onChange={setVt} suffix="ml" />
+        <Field label="FR" value={rr} onChange={setRr} suffix="rpm" />
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-4">
+        <Field label="Pplat" value={plateau} onChange={setPlateau} suffix="cmH2O" />
+        <Field label="PEEP" value={peep} onChange={setPeep} suffix="cmH2O" />
+        <Field label="PaO2" value={pao2} onChange={setPao2} suffix="mmHg" />
+        <Field label="FiO2" value={fio2} onChange={setFio2} suffix="%" />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <ResultCard title="PBW" value={`${round(result.pbw, 1)} kg`} />
+        <ResultCard title="VT 4 ml/kg" value={`${round(result.vt4, 0)} ml`} />
+        <ResultCard title="VT 6 ml/kg" value={`${round(result.vt6, 0)} ml`} />
+        <ResultCard title="VT 8 ml/kg" value={`${round(result.vt8, 0)} ml`} />
+        <ResultCard title="VM" value={`${round(result.minuteVentilation, 1)} L/min`} />
+        <ResultCard title="DP" value={`${round(result.drivingPressure, 1)} cmH2O`} />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <ResultCard
+          title="Relación P/F"
+          value={`${round(result.pfRatio, 0)}`}
+          helper="Usa FiO2 en porcentaje, por ejemplo 40 para 40%."
+        />
+        <ResultCard
+          title="Interpretación"
+          value={result.ardsSeverity}
+          helper="Contextualizar con PEEP ≥5, infiltrados bilaterales, origen no cardiogénico y temporalidad clínica."
+        />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+        En SDRA, prioriza VT protector 4–6 ml/kg de peso predicho, Pplat idealmente ≤30 cmH2O y driving pressure preferentemente ≤15 cmH2O, ajustando a gasometría, mecánica pulmonar y contexto hemodinámico.
+      </div>
+    </section>
+  );
+}
+
 function QuickScores() {
   const [confusion, setConfusion] = useState(false);
   const [urea, setUrea] = useState(false);
@@ -440,6 +547,7 @@ export default function CalcPage() {
               ["Infusiones", "#infusiones"],
               ["Electrolitos", "#electrolitos"],
               ["Renal/ACO", "#renal"],
+              ["VMI", "#vmi"],
               ["Escalas", "#escalas"],
             ].map(([label, href]) => (
               <a
@@ -462,6 +570,7 @@ export default function CalcPage() {
           <InfusionCalculator />
           <ElectrolyteCalculator />
           <RenalAnticoagulationCalculator />
+          <MechanicalVentilationCalculator />
           <QuickScores />
         </div>
       </div>
