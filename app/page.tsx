@@ -457,7 +457,7 @@ export default async function Home({
   { label: "Rounds", href: "/" },
   { label: "Patients", href: "/patients/new" },
   { label: "Notes", href: "/" },
-  { label: "Calc", href: "/" },
+  { label: "Calc", href: "/calc" },
   { label: "Drugs", href: "/" },
   { label: "Protocols", href: "/" },
 ].map((item) => (
