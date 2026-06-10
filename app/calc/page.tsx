@@ -1,8 +1,85 @@
-
 "use client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+
+type InfusionUnit = "mcg/kg/min" | "mcg/kg/h" | "mg/kg/h";
+
+type InfusionDrug = {
+  name: string;
+  unit: InfusionUnit;
+  defaultDose: string;
+  defaultDrugMg: string;
+  defaultDiluentMl: string;
+  note: string;
+};
+
+const infusionDrugs: InfusionDrug[] = [
+  {
+    name: "Norepinefrina",
+    unit: "mcg/kg/min",
+    defaultDose: "0.1",
+    defaultDrugMg: "4",
+    defaultDiluentMl: "250",
+    note: "Choque distributivo/séptico. Meta habitual PAM ≥65.",
+  },
+  {
+    name: "Dobutamina",
+    unit: "mcg/kg/min",
+    defaultDose: "5",
+    defaultDrugMg: "250",
+    defaultDiluentMl: "250",
+    note: "Bajo gasto cardiaco con presión permisiva.",
+  },
+  {
+    name: "Dopamina",
+    unit: "mcg/kg/min",
+    defaultDose: "5",
+    defaultDrugMg: "200",
+    defaultDiluentMl: "250",
+    note: "Menos preferida; vigilar taquiarritmias.",
+  },
+  {
+    name: "Adrenalina",
+    unit: "mcg/kg/min",
+    defaultDose: "0.05",
+    defaultDrugMg: "1",
+    defaultDiluentMl: "100",
+    note: "Choque refractario, anafilaxia o contexto específico.",
+  },
+  {
+    name: "Dexmedetomidina",
+    unit: "mcg/kg/h",
+    defaultDose: "0.4",
+    defaultDrugMg: "0.2",
+    defaultDiluentMl: "50",
+    note: "Sedación cooperativa. Vigilar bradicardia e hipotensión.",
+  },
+  {
+    name: "Fentanilo",
+    unit: "mcg/kg/h",
+    defaultDose: "1",
+    defaultDrugMg: "0.5",
+    defaultDiluentMl: "100",
+    note: "Analgesia/sedoanalgesia. Ajustar a respuesta clínica.",
+  },
+  {
+    name: "Propofol",
+    unit: "mg/kg/h",
+    defaultDose: "1",
+    defaultDrugMg: "1000",
+    defaultDiluentMl: "100",
+    note: "Sedación. Vigilar hipotensión, TG y síndrome de infusión.",
+  },
+  {
+    name: "Midazolam",
+    unit: "mg/kg/h",
+    defaultDose: "0.05",
+    defaultDrugMg: "50",
+    defaultDiluentMl: "50",
+    note: "Sedación. Vigilar acumulación, especialmente en ERC/ancianos.",
+  },
+];
 
 function toNumber(value: string) {
   const parsed = Number(value);
@@ -12,6 +89,39 @@ function toNumber(value: string) {
 function round(value: number, decimals = 2) {
   if (!Number.isFinite(value)) return "—";
   return value.toFixed(decimals).replace(/\.00$/, "");
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  suffix,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  suffix?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-slate-300">
+        {label}
+      </span>
+      <div className="flex overflow-hidden rounded-2xl border border-white/10 bg-[#061527] focus-within:border-cyan-300/60">
+        <input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          inputMode="decimal"
+          className="w-full bg-transparent px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600"
+        />
+        {suffix ? (
+          <span className="flex items-center border-l border-white/10 px-3 text-xs text-slate-400">
+            {suffix}
+          </span>
+        ) : null}
+      </div>
+    </label>
+  );
 }
 
 function ResultCard({
@@ -34,81 +144,101 @@ function ResultCard({
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  suffix,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  suffix?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-semibold text-slate-300">{label}</span>
-      <div className="flex overflow-hidden rounded-2xl border border-white/10 bg-[#061527] focus-within:border-cyan-300/60">
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          inputMode="decimal"
-          placeholder={placeholder}
-          className="w-full bg-transparent px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600"
-        />
-        {suffix ? (
-          <span className="flex items-center border-l border-white/10 px-3 text-xs text-slate-400">
-            {suffix}
-          </span>
-        ) : null}
-      </div>
-    </label>
-  );
-}
+function InfusionCalculator() {
+  const [drugName, setDrugName] = useState("Norepinefrina");
+  const selectedDrug =
+    infusionDrugs.find((drug) => drug.name === drugName) ?? infusionDrugs[0];
 
-function VasoactiveCalculator() {
   const [weight, setWeight] = useState("70");
-  const [dose, setDose] = useState("0.1");
-  const [drugMg, setDrugMg] = useState("4");
-  const [diluentMl, setDiluentMl] = useState("250");
+  const [dose, setDose] = useState(selectedDrug.defaultDose);
+  const [drugMg, setDrugMg] = useState(selectedDrug.defaultDrugMg);
+  const [diluentMl, setDiluentMl] = useState(selectedDrug.defaultDiluentMl);
+
+  function changeDrug(name: string) {
+    const drug = infusionDrugs.find((item) => item.name === name) ?? infusionDrugs[0];
+    setDrugName(drug.name);
+    setDose(drug.defaultDose);
+    setDrugMg(drug.defaultDrugMg);
+    setDiluentMl(drug.defaultDiluentMl);
+  }
 
   const result = useMemo(() => {
     const kg = toNumber(weight);
-    const mcgKgMin = toNumber(dose);
+    const numericDose = toNumber(dose);
     const mg = toNumber(drugMg);
     const ml = toNumber(diluentMl);
-    const concentration = ml > 0 ? (mg * 1000) / ml : 0;
-    const mcgMin = kg * mcgKgMin;
-    const mlHour = concentration > 0 ? (mcgMin / concentration) * 60 : 0;
 
-    return { concentration, mcgMin, mlHour };
-  }, [weight, dose, drugMg, diluentMl]);
+    const concentrationMcgMl = ml > 0 ? (mg * 1000) / ml : 0;
+
+    let mcgHour = 0;
+
+    if (selectedDrug.unit === "mcg/kg/min") {
+      mcgHour = kg * numericDose * 60;
+    }
+
+    if (selectedDrug.unit === "mcg/kg/h") {
+      mcgHour = kg * numericDose;
+    }
+
+    if (selectedDrug.unit === "mg/kg/h") {
+      mcgHour = kg * numericDose * 1000;
+    }
+
+    const mlHour = concentrationMcgMl > 0 ? mcgHour / concentrationMcgMl : 0;
+
+    return {
+      concentrationMcgMl,
+      mcgHour,
+      mlHour,
+    };
+  }, [weight, dose, drugMg, diluentMl, selectedDrug.unit]);
 
   return (
-    <section id="vasoactivos" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="infusiones" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
-        <h2 className="text-2xl font-bold text-white">Vasoactivos</h2>
+        <h2 className="text-2xl font-bold text-white">Infusiones automáticas</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Calcula infusión en ml/h con peso, dosis y concentración de la dilución.
+          Selecciona fármaco, peso, dosis y dilución. Calcula ml/h automáticamente.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="mb-5 grid gap-4 md:grid-cols-5">
+        <label className="block md:col-span-2">
+          <span className="mb-2 block text-sm font-semibold text-slate-300">
+            Fármaco
+          </span>
+          <select
+            value={drugName}
+            onChange={(event) => changeDrug(event.target.value)}
+            className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+          >
+            {infusionDrugs.map((drug) => (
+              <option key={drug.name} value={drug.name}>
+                {drug.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <Field label="Peso" value={weight} onChange={setWeight} suffix="kg" />
-        <Field label="Dosis" value={dose} onChange={setDose} suffix="mcg/kg/min" />
+        <Field label="Dosis" value={dose} onChange={setDose} suffix={selectedDrug.unit} />
         <Field label="Fármaco" value={drugMg} onChange={setDrugMg} suffix="mg" />
         <Field label="Diluyente" value={diluentMl} onChange={setDiluentMl} suffix="ml" />
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <ResultCard title="Concentración" value={`${round(result.concentration)} mcg/ml`} />
-        <ResultCard title="Dosis total" value={`${round(result.mcgMin)} mcg/min`} />
+      <div className="grid gap-4 md:grid-cols-3">
+        <ResultCard
+          title="Concentración"
+          value={`${round(result.concentrationMcgMl)} mcg/ml`}
+        />
+        <ResultCard
+          title="Dosis total"
+          value={`${round(result.mcgHour)} mcg/h`}
+        />
         <ResultCard
           title="Velocidad"
           value={`${round(result.mlHour)} ml/h`}
-          helper="Útil para norepinefrina, dobutamina, dopamina y otros fármacos calculados en mcg/kg/min."
+          helper={selectedDrug.note}
         />
       </div>
     </section>
@@ -144,7 +274,7 @@ function ElectrolyteCalculator() {
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Electrolitos y metabolismo</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Sodio corregido, anion gap, anion gap corregido por albúmina y osmolaridad.
+          Na corregido, anion gap, anion gap corregido y osmolaridad.
         </p>
       </div>
 
@@ -186,11 +316,11 @@ function RenalAnticoagulationCalculator() {
   }, [age, weight, creatinine, sex]);
 
   return (
-    <section id="anticoagulacion" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="renal" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Función renal y anticoagulación</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Cockcroft-Gault rápido y sugerencia práctica de enoxaparina según depuración.
+          Cockcroft-Gault y ajuste rápido de enoxaparina.
         </p>
       </div>
 
@@ -198,6 +328,7 @@ function RenalAnticoagulationCalculator() {
         <Field label="Edad" value={age} onChange={setAge} suffix="años" />
         <Field label="Peso" value={weight} onChange={setWeight} suffix="kg" />
         <Field label="Creatinina" value={creatinine} onChange={setCreatinine} suffix="mg/dl" />
+
         <label className="block md:col-span-2">
           <span className="mb-2 block text-sm font-semibold text-slate-300">Sexo</span>
           <select
@@ -291,7 +422,8 @@ export default function CalcPage() {
               </p>
               <h1 className="mt-2 text-4xl font-bold">Calculadoras automáticas</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Módulo práctico para guardia: escribe los datos y obtén cálculos automáticos de vasoactivos, electrolitos, función renal, anticoagulación y CURB-65.
+                Módulo práctico para guardia: infusiones, electrolitos, función renal,
+                anticoagulación y escalas rápidas.
               </p>
             </div>
 
@@ -305,9 +437,9 @@ export default function CalcPage() {
 
           <nav className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527] p-2">
             {[
-              ["Vasoactivos", "#vasoactivos"],
+              ["Infusiones", "#infusiones"],
               ["Electrolitos", "#electrolitos"],
-              ["Renal/ACO", "#anticoagulacion"],
+              ["Renal/ACO", "#renal"],
               ["Escalas", "#escalas"],
             ].map(([label, href]) => (
               <a
@@ -322,11 +454,12 @@ export default function CalcPage() {
         </header>
 
         <section className="mb-8 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-          Apoyo clínico para residentes. Ajusta siempre a protocolo local, contexto del paciente, metas clínicas, función renal y criterio médico.
+          Apoyo clínico para residentes. Ajusta siempre a protocolo local, contexto del paciente,
+          metas clínicas, función renal y criterio médico.
         </section>
 
         <div className="space-y-6">
-          <VasoactiveCalculator />
+          <InfusionCalculator />
           <ElectrolyteCalculator />
           <RenalAnticoagulationCalculator />
           <QuickScores />
