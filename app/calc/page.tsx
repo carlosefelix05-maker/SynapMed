@@ -138,7 +138,8 @@ function ResultCard({
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
         {title}
       </p>
-<p className="mt-2 break-words text-2xl font-bold text-white md:text-3xl">{value}</p>      {helper ? <p className="mt-2 text-xs leading-5 text-slate-400">{helper}</p> : null}
+      <p className="mt-2 break-words text-2xl font-bold text-white md:text-3xl">{value}</p>
+      {helper ? <p className="mt-2 text-xs leading-5 text-slate-400">{helper}</p> : null}
     </div>
   );
 }
@@ -240,7 +241,7 @@ function InfusionCalculator() {
   }, [weight, dose, drugMg, diluentMl, selectedDrug.unit]);
 
   return (
-    <section id="infusiones" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="infusiones" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Infusiones automáticas</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -316,7 +317,7 @@ function ElectrolyteCalculator() {
   }, [na, glu, cl, hco3, bun, albumin]);
 
   return (
-    <section id="electrolitos" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="electrolitos" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Electrolitos y metabolismo</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -389,7 +390,7 @@ function ElectrolyteReplacementCalculator() {
   }, [potassium, magnesium, phosphorus, renalRisk]);
 
   return (
-    <section id="reposicion" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="reposicion" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Reposición de electrolitos</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -465,7 +466,7 @@ function RenalAnticoagulationCalculator() {
   }, [age, creatinine, sex]);
 
   return (
-    <section id="renal" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="renal" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Función renal y anticoagulación</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -545,7 +546,7 @@ const pbw =
   }, [sex, height, vt, rr, plateau, peep, pao2, fio2]);
 
   return (
-    <section id="vmi" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="vmi" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Ventilación mecánica invasiva</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -745,7 +746,7 @@ function QuickScores() {
   );
 
   return (
-    <section id="escalas" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="escalas" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Escalas rápidas</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -908,7 +909,7 @@ export default function CalcPage() {
           <a
             key={href}
             href={href}
-            className="whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/10 hover:text-white"
+            className="whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:bg-cyan-400/10 focus:text-cyan-100 focus:outline-none"
           >
             {label}
           </a>
@@ -920,7 +921,7 @@ export default function CalcPage() {
           Apoyo clínico para residentes. Las fórmulas y puntajes orientan decisiones, pero deben ajustarse a protocolo local, contexto del paciente, metas clínicas, función renal y criterio médico.
         </section>
 
-        <section id="favoritos" className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl">
+        <section id="favoritos" className="mb-8 scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl">
           <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
             <div>
               <h2 className="text-xl font-bold text-white">Favoritos de guardia</h2>
@@ -947,7 +948,7 @@ export default function CalcPage() {
               <a
                 key={href}
                 href={href}
-                className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-400/20"
+                className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-4 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-400/20 focus:border-cyan-300/60 focus:outline-none"
               >
                 {label}
               </a>
@@ -1050,7 +1051,7 @@ function UrgencyScoresCalculator() {
   return (
     <section
       id="urgencias"
-      className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl"
+      className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl"
     >
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Urgencias</h2>
@@ -1462,7 +1463,7 @@ function CardiologyScoresCalculator() {
   );
 
   return (
-    <section id="cardio-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="cardio-scores" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Cardiología</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -1804,7 +1805,7 @@ function IcuScoresCalculator() {
   }, [apacheAge, apacheTemp, apacheMap, apacheHr, apacheRr, apacheNa, apacheK, apacheCr, apacheHto, apacheWbc, apacheGcs, apacheChronic]);
 
   return (
-    <section id="uci-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl mt-10">
+    <section id="uci-scores" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl mt-10">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Escalas UCI</h2>
         <p className="mt-1 text-sm text-slate-400">
@@ -2042,7 +2043,7 @@ function GastroScoresCalculator() {
   }, [meldBilirubin, meldInr, meldCreatinine, meldSodium, meldDialysis]);
 
   return (
-    <section id="gastro-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+    <section id="gastro-scores" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Gastro / Hepato</h2>
         <p className="mt-1 text-sm text-slate-400">
