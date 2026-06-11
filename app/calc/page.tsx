@@ -387,34 +387,48 @@ function ElectrolyteReplacementCalculator() {
 
 function RenalAnticoagulationCalculator() {
   const [age, setAge] = useState("65");
-  const [weight, setWeight] = useState("70");
   const [creatinine, setCreatinine] = useState("1.2");
   const [sex, setSex] = useState("M");
 
   const result = useMemo(() => {
     const years = toNumber(age);
-    const kg = toNumber(weight);
     const cr = toNumber(creatinine);
-    const base = cr > 0 ? ((140 - years) * kg) / (72 * cr) : 0;
-    const crcl = sex === "F" ? base * 0.85 : base;
-    const prophylaxis = crcl < 30 ? "30 mg SC cada 24 h" : "40 mg SC cada 24 h";
-    const therapeutic = crcl < 30 ? "1 mg/kg SC cada 24 h" : "1 mg/kg SC cada 12 h";
+    const kappa = sex === "F" ? 0.7 : 0.9;
+    const alpha = sex === "F" ? -0.241 : -0.302;
 
-    return { crcl, prophylaxis, therapeutic };
-  }, [age, weight, creatinine, sex]);
+    const egfr =
+      cr > 0
+        ? 142 *
+          Math.min(cr / kappa, 1) ** alpha *
+          Math.max(cr / kappa, 1) ** -1.2 *
+          0.9938 ** years *
+          (sex === "F" ? 1.012 : 1)
+        : 0;
+
+    let kdigo = "ERC G1";
+    if (egfr < 15) kdigo = "ERC G5";
+    else if (egfr < 30) kdigo = "ERC G4";
+    else if (egfr < 45) kdigo = "ERC G3b";
+    else if (egfr < 60) kdigo = "ERC G3a";
+    else if (egfr < 90) kdigo = "ERC G2";
+
+    const prophylaxis = egfr < 30 ? "30 mg SC cada 24 h" : "40 mg SC cada 24 h";
+    const therapeutic = egfr < 30 ? "1 mg/kg SC cada 24 h" : "1 mg/kg SC cada 12 h";
+
+    return { egfr, kdigo, prophylaxis, therapeutic };
+  }, [age, creatinine, sex]);
 
   return (
     <section id="renal" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Función renal y anticoagulación</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Cockcroft-Gault y ajuste rápido de enoxaparina.
+          CKD-EPI 2021, clasificación KDIGO de ERC y ajuste rápido de enoxaparina.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4">
         <Field label="Edad" value={age} onChange={setAge} suffix="años" />
-        <Field label="Peso" value={weight} onChange={setWeight} suffix="kg" />
         <Field label="Creatinina" value={creatinine} onChange={setCreatinine} suffix="mg/dl" />
 
         <label className="block md:col-span-2">
@@ -430,8 +444,9 @@ function RenalAnticoagulationCalculator() {
         </label>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <ResultCard title="CrCl estimada" value={`${round(result.crcl, 1)} ml/min`} />
+      <div className="mt-5 grid gap-4 md:grid-cols-4">
+        <ResultCard title="CKD-EPI / CrCl" value={`${round(result.egfr, 1)} ml/min/1.73m²`} />
+        <ResultCard title="KDIGO ERC" value={result.kdigo} />
         <ResultCard title="Profilaxis" value={result.prophylaxis} />
         <ResultCard title="Terapéutica" value={result.therapeutic} />
       </div>
@@ -839,6 +854,8 @@ export default function CalcPage() {
               ["Renal/ACO", "#renal"],
               ["VMI", "#vmi"],
               ["Escalas", "#escalas"],
+              ["UCI", "#uci-scores"],
+              ["Cardiología", "#cardio-scores"],
             ].map(([label, href]) => (
               <a
                 key={href}
@@ -863,8 +880,481 @@ export default function CalcPage() {
           <RenalAnticoagulationCalculator />
           <MechanicalVentilationCalculator />
           <QuickScores />
+          <IcuScoresCalculator />
+          <CardiologyScoresCalculator />
         </div>
       </div>
     </main>
+  );
+}
+
+function CardiologyScoresCalculator() {
+  const [killip, setKillip] = useState("I");
+
+  const [shockHr, setShockHr] = useState("90");
+  const [shockSbp, setShockSbp] = useState("120");
+
+  const [rcriHighRisk, setRcriHighRisk] = useState(false);
+  const [rcriCad, setRcriCad] = useState(false);
+  const [rcriChf, setRcriChf] = useState(false);
+  const [rcriCva, setRcriCva] = useState(false);
+  const [rcriInsulin, setRcriInsulin] = useState(false);
+  const [rcriCr, setRcriCr] = useState(false);
+
+  const shockIndex = useMemo(() => {
+    const hr = toNumber(shockHr);
+    const sbp = toNumber(shockSbp);
+    return sbp > 0 ? hr / sbp : 0;
+  }, [shockHr, shockSbp]);
+
+  const shockInterpretation =
+    shockIndex >= 1
+      ? "Alto riesgo / choque probable"
+      : shockIndex >= 0.7
+        ? "Riesgo intermedio"
+        : "Bajo riesgo hemodinámico";
+
+  const rcri = [rcriHighRisk, rcriCad, rcriChf, rcriCva, rcriInsulin, rcriCr].filter(Boolean).length;
+
+  const rcriRisk =
+    rcri === 0
+      ? "Riesgo bajo"
+      : rcri === 1
+        ? "Riesgo intermedio"
+        : rcri === 2
+          ? "Riesgo elevado"
+          : "Riesgo alto";
+
+  const killipDescription =
+    killip === "I"
+      ? "Sin datos de insuficiencia cardiaca"
+      : killip === "II"
+        ? "Estertores/S3/ingurgitación yugular"
+        : killip === "III"
+          ? "Edema agudo pulmonar"
+          : "Choque cardiogénico";
+
+  const ScoreCheck = ({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+  }) => (
+    <label
+      className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
+        checked
+          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+          : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mr-2"
+      />
+      {label}
+    </label>
+  );
+
+  return (
+    <section id="cardio-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Cardiología</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Killip-Kimball, Shock Index y RCRI/Lee para valoración cardiovascular rápida.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Killip-Kimball</h3>
+              <p className="text-sm text-slate-400">Clasificación clínica en síndrome coronario agudo.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              Killip {killip}
+            </span>
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-300">Clase</span>
+            <select
+              value={killip}
+              onChange={(event) => setKillip(event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+            >
+              <option value="I">I: sin insuficiencia cardiaca</option>
+              <option value="II">II: estertores/S3/ingurgitación yugular</option>
+              <option value="III">III: edema agudo pulmonar</option>
+              <option value="IV">IV: choque cardiogénico</option>
+            </select>
+          </label>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="Killip" value={`Clase ${killip}`} />
+            <ResultCard title="Interpretación" value={killipDescription} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Shock Index</h3>
+              <p className="text-sm text-slate-400">FC / presión arterial sistólica.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {round(shockIndex, 2)}
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="FC" value={shockHr} onChange={setShockHr} suffix="lpm" />
+            <Field label="TAS" value={shockSbp} onChange={setShockSbp} suffix="mmHg" />
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="Shock Index" value={`${round(shockIndex, 2)}`} />
+            <ResultCard title="Interpretación" value={shockInterpretation} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">RCRI / Lee</h3>
+              <p className="text-sm text-slate-400">Riesgo cardiaco perioperatorio.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {rcri} punto(s)
+            </span>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <ScoreCheck label="Cirugía de alto riesgo" checked={rcriHighRisk} onChange={setRcriHighRisk} />
+            <ScoreCheck label="Cardiopatía isquémica" checked={rcriCad} onChange={setRcriCad} />
+            <ScoreCheck label="Insuficiencia cardiaca" checked={rcriChf} onChange={setRcriChf} />
+            <ScoreCheck label="EVC/TIA" checked={rcriCva} onChange={setRcriCva} />
+            <ScoreCheck label="DM con insulina" checked={rcriInsulin} onChange={setRcriInsulin} />
+            <ScoreCheck label="Creatinina >2 mg/dl" checked={rcriCr} onChange={setRcriCr} />
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="RCRI" value={`${rcri} punto(s)`} />
+            <ResultCard title="Interpretación" value={rcriRisk} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IcuScoresCalculator() {
+  const [newsRr, setNewsRr] = useState("18");
+  const [newsSpo2, setNewsSpo2] = useState("96");
+  const [newsO2, setNewsO2] = useState(false);
+  const [newsTemp, setNewsTemp] = useState("36.8");
+  const [newsSbp, setNewsSbp] = useState("120");
+  const [newsHr, setNewsHr] = useState("80");
+  const [newsAvpu, setNewsAvpu] = useState("A");
+
+  const [sofaPf, setSofaPf] = useState("300");
+  const [sofaPlatelets, setSofaPlatelets] = useState("200");
+  const [sofaBilirubin, setSofaBilirubin] = useState("0.8");
+  const [sofaCardio, setSofaCardio] = useState("0");
+  const [sofaGcs, setSofaGcs] = useState("15");
+  const [sofaCreatinine, setSofaCreatinine] = useState("1.0");
+
+  const [psiAge, setPsiAge] = useState("65");
+  const [psiMale, setPsiMale] = useState(true);
+  const [psiNursing, setPsiNursing] = useState(false);
+  const [psiCancer, setPsiCancer] = useState(false);
+  const [psiLiver, setPsiLiver] = useState(false);
+  const [psiChf, setPsiChf] = useState(false);
+  const [psiCva, setPsiCva] = useState(false);
+  const [psiRenal, setPsiRenal] = useState(false);
+  const [psiMental, setPsiMental] = useState(false);
+  const [psiRr, setPsiRr] = useState(false);
+  const [psiSbp, setPsiSbp] = useState(false);
+  const [psiTemp, setPsiTemp] = useState(false);
+  const [psiHr, setPsiHr] = useState(false);
+  const [psiPh, setPsiPh] = useState(false);
+  const [psiBun, setPsiBun] = useState(false);
+  const [psiNa, setPsiNa] = useState(false);
+  const [psiGlu, setPsiGlu] = useState(false);
+  const [psiHto, setPsiHto] = useState(false);
+  const [psiO2, setPsiO2] = useState(false);
+  const [psiEffusion, setPsiEffusion] = useState(false);
+
+  const [apacheAge, setApacheAge] = useState("65");
+  const [apacheTemp, setApacheTemp] = useState("37");
+  const [apacheMap, setApacheMap] = useState("80");
+  const [apacheHr, setApacheHr] = useState("90");
+  const [apacheRr, setApacheRr] = useState("18");
+  const [apacheNa, setApacheNa] = useState("140");
+  const [apacheK, setApacheK] = useState("4");
+  const [apacheCr, setApacheCr] = useState("1");
+  const [apacheHto, setApacheHto] = useState("40");
+  const [apacheWbc, setApacheWbc] = useState("10");
+  const [apacheGcs, setApacheGcs] = useState("15");
+  const [apacheChronic, setApacheChronic] = useState(false);
+
+  const ScoreCheck = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) => (
+    <label
+      className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
+        checked
+          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+          : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mr-2" />
+      {label}
+    </label>
+  );
+
+  const news2 = useMemo(() => {
+    const rr = toNumber(newsRr);
+    const spo2 = toNumber(newsSpo2);
+    const temp = toNumber(newsTemp);
+    const sbp = toNumber(newsSbp);
+    const hr = toNumber(newsHr);
+    let score = 0;
+    score += rr <= 8 ? 3 : rr <= 11 ? 1 : rr <= 20 ? 0 : rr <= 24 ? 2 : 3;
+    score += spo2 <= 91 ? 3 : spo2 <= 93 ? 2 : spo2 <= 95 ? 1 : 0;
+    score += newsO2 ? 2 : 0;
+    score += temp <= 35 ? 3 : temp <= 36 ? 1 : temp <= 38 ? 0 : temp <= 39 ? 1 : 2;
+    score += sbp <= 90 ? 3 : sbp <= 100 ? 2 : sbp <= 110 ? 1 : sbp <= 219 ? 0 : 3;
+    score += hr <= 40 ? 3 : hr <= 50 ? 1 : hr <= 90 ? 0 : hr <= 110 ? 1 : hr <= 130 ? 2 : 3;
+    score += newsAvpu === "A" ? 0 : 3;
+    const risk = score >= 7 ? "Alto" : score >= 5 ? "Medio" : score >= 1 ? "Bajo" : "Sin alarma";
+    return { score, risk };
+  }, [newsRr, newsSpo2, newsO2, newsTemp, newsSbp, newsHr, newsAvpu]);
+
+  const sofa = useMemo(() => {
+    const pf = toNumber(sofaPf);
+    const platelets = toNumber(sofaPlatelets);
+    const bilirubin = toNumber(sofaBilirubin);
+    const cardio = Math.min(Math.max(Math.round(toNumber(sofaCardio)), 0), 4);
+    const gcs = toNumber(sofaGcs);
+    const cr = toNumber(sofaCreatinine);
+    const resp = pf < 100 ? 4 : pf < 200 ? 3 : pf < 300 ? 2 : pf < 400 ? 1 : 0;
+    const coag = platelets < 20 ? 4 : platelets < 50 ? 3 : platelets < 100 ? 2 : platelets < 150 ? 1 : 0;
+    const liver = bilirubin >= 12 ? 4 : bilirubin >= 6 ? 3 : bilirubin >= 2 ? 2 : bilirubin >= 1.2 ? 1 : 0;
+    const neuro = gcs < 6 ? 4 : gcs < 10 ? 3 : gcs < 13 ? 2 : gcs < 15 ? 1 : 0;
+    const renal = cr >= 5 ? 4 : cr >= 3.5 ? 3 : cr >= 2 ? 2 : cr >= 1.2 ? 1 : 0;
+    const score = resp + coag + liver + cardio + neuro + renal;
+    return { score, resp, coag, liver, cardio, neuro, renal };
+  }, [sofaPf, sofaPlatelets, sofaBilirubin, sofaCardio, sofaGcs, sofaCreatinine]);
+
+  const psiScore =
+    toNumber(psiAge) -
+    (psiMale ? 0 : 10) +
+    Number(psiNursing) * 10 +
+    Number(psiCancer) * 30 +
+    Number(psiLiver) * 20 +
+    Number(psiChf) * 10 +
+    Number(psiCva) * 10 +
+    Number(psiRenal) * 10 +
+    Number(psiMental) * 20 +
+    Number(psiRr) * 20 +
+    Number(psiSbp) * 20 +
+    Number(psiTemp) * 15 +
+    Number(psiHr) * 10 +
+    Number(psiPh) * 30 +
+    Number(psiBun) * 20 +
+    Number(psiNa) * 20 +
+    Number(psiGlu) * 10 +
+    Number(psiHto) * 10 +
+    Number(psiO2) * 10 +
+    Number(psiEffusion) * 10;
+  const psiClass = psiScore <= 70 ? "Clase II" : psiScore <= 90 ? "Clase III" : psiScore <= 130 ? "Clase IV" : "Clase V";
+
+  const apache = useMemo(() => {
+    const age = toNumber(apacheAge);
+    const temp = toNumber(apacheTemp);
+    const map = toNumber(apacheMap);
+    const hr = toNumber(apacheHr);
+    const rr = toNumber(apacheRr);
+    const na = toNumber(apacheNa);
+    const k = toNumber(apacheK);
+    const cr = toNumber(apacheCr);
+    const hto = toNumber(apacheHto);
+    const wbc = toNumber(apacheWbc);
+    const gcs = toNumber(apacheGcs);
+    const agePts = age >= 75 ? 6 : age >= 65 ? 5 : age >= 55 ? 3 : age >= 45 ? 2 : 0;
+    const tempPts = temp >= 41 ? 4 : temp >= 39 ? 3 : temp >= 38.5 ? 1 : temp >= 36 ? 0 : temp >= 34 ? 1 : temp >= 32 ? 2 : temp >= 30 ? 3 : 4;
+    const mapPts = map >= 160 ? 4 : map >= 130 ? 3 : map >= 110 ? 2 : map >= 70 ? 0 : map >= 50 ? 2 : 4;
+    const hrPts = hr >= 180 ? 4 : hr >= 140 ? 3 : hr >= 110 ? 2 : hr >= 70 ? 0 : hr >= 55 ? 2 : hr >= 40 ? 3 : 4;
+    const rrPts = rr >= 50 ? 4 : rr >= 35 ? 3 : rr >= 25 ? 1 : rr >= 12 ? 0 : rr >= 10 ? 1 : rr >= 6 ? 2 : 4;
+    const naPts = na >= 180 ? 4 : na >= 160 ? 3 : na >= 155 ? 2 : na >= 150 ? 1 : na >= 130 ? 0 : na >= 120 ? 2 : na >= 111 ? 3 : 4;
+    const kPts = k >= 7 ? 4 : k >= 6 ? 3 : k >= 5.5 ? 1 : k >= 3.5 ? 0 : k >= 3 ? 1 : k >= 2.5 ? 2 : 4;
+    const crPts = cr >= 3.5 ? 4 : cr >= 2 ? 3 : cr >= 1.5 ? 2 : cr >= 0.6 ? 0 : 2;
+    const htoPts = hto >= 60 ? 4 : hto >= 50 ? 2 : hto >= 46 ? 1 : hto >= 30 ? 0 : hto >= 20 ? 2 : 4;
+    const wbcPts = wbc >= 40 ? 4 : wbc >= 20 ? 2 : wbc >= 15 ? 1 : wbc >= 3 ? 0 : wbc >= 1 ? 2 : 4;
+    const gcsPts = 15 - gcs;
+    const chronicPts = apacheChronic ? 5 : 0;
+    const total =
+      agePts +
+      tempPts +
+      mapPts +
+      hrPts +
+      rrPts +
+      naPts +
+      kPts +
+      crPts +
+      htoPts +
+      wbcPts +
+      gcsPts +
+      chronicPts;
+    return { total };
+  }, [apacheAge, apacheTemp, apacheMap, apacheHr, apacheRr, apacheNa, apacheK, apacheCr, apacheHto, apacheWbc, apacheGcs, apacheChronic]);
+
+  return (
+    <section id="uci-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl mt-10">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Escalas UCI</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          NEWS2, SOFA, PSI y APACHE II. Revisa contexto clínico y protocolo local.
+        </p>
+      </div>
+      <div className="space-y-6">
+        {/* NEWS2 */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">NEWS2</h3>
+              <p className="text-sm text-slate-400">Early warning score.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {news2.score} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-7">
+            <Field label="FR" value={newsRr} onChange={setNewsRr} suffix="rpm" />
+            <Field label="SpO2" value={newsSpo2} onChange={setNewsSpo2} suffix="%" />
+            <ScoreCheck label="O2 suplementario" checked={newsO2} onChange={setNewsO2} />
+            <Field label="Temp" value={newsTemp} onChange={setNewsTemp} suffix="°C" />
+            <Field label="TAS" value={newsSbp} onChange={setNewsSbp} suffix="mmHg" />
+            <Field label="FC" value={newsHr} onChange={setNewsHr} suffix="lpm" />
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">AVPU</span>
+              <select
+                value={newsAvpu}
+                onChange={(event) => setNewsAvpu(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="A">Alerta</option>
+                <option value="V">Verbal</option>
+                <option value="P">Dolor</option>
+                <option value="U">No responde</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="NEWS2" value={`${news2.score} punto(s)`} />
+            <ResultCard title="Riesgo" value={news2.risk} />
+          </div>
+        </div>
+        {/* SOFA */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">SOFA</h3>
+              <p className="text-sm text-slate-400">Disfunción orgánica secuencial.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {sofa.score} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-6">
+            <Field label="P/F" value={sofaPf} onChange={setSofaPf} suffix="mmHg" />
+            <Field label="Plaquetas" value={sofaPlatelets} onChange={setSofaPlatelets} suffix="mil/mm³" />
+            <Field label="BT" value={sofaBilirubin} onChange={setSofaBilirubin} suffix="mg/dl" />
+            <Field label="Cardio" value={sofaCardio} onChange={setSofaCardio} suffix="0–4" />
+            <Field label="GCS" value={sofaGcs} onChange={setSofaGcs} suffix="" />
+            <Field label="Creatinina" value={sofaCreatinine} onChange={setSofaCreatinine} suffix="mg/dl" />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="SOFA" value={`${sofa.score} punto(s)`} />
+            <ResultCard
+              title="Detalle"
+              value={`Resp: ${sofa.resp}, Coag: ${sofa.coag}, Hígado: ${sofa.liver}, Cardio: ${sofa.cardio}, Neuro: ${sofa.neuro}, Renal: ${sofa.renal}`}
+            />
+          </div>
+        </div>
+        {/* PSI */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">PSI</h3>
+              <p className="text-sm text-slate-400">
+                Neumonía: índice de severidad (Pneumonia Severity Index).
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {psiScore} punto(s)
+            </span>
+          </div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <Field label="Edad" value={psiAge} onChange={setPsiAge} suffix="años" />
+            <ScoreCheck label="Masculino" checked={psiMale} onChange={setPsiMale} />
+            <ScoreCheck label="Residencia" checked={psiNursing} onChange={setPsiNursing} />
+            <ScoreCheck label="Cáncer" checked={psiCancer} onChange={setPsiCancer} />
+            <ScoreCheck label="Hepático" checked={psiLiver} onChange={setPsiLiver} />
+            <ScoreCheck label="IC" checked={psiChf} onChange={setPsiChf} />
+            <ScoreCheck label="EVC" checked={psiCva} onChange={setPsiCva} />
+            <ScoreCheck label="Renal" checked={psiRenal} onChange={setPsiRenal} />
+            <ScoreCheck label="Mental alterado" checked={psiMental} onChange={setPsiMental} />
+            <ScoreCheck label="FR ≥30" checked={psiRr} onChange={setPsiRr} />
+            <ScoreCheck label="PAS <90" checked={psiSbp} onChange={setPsiSbp} />
+            <ScoreCheck label="Temp <35 o >40" checked={psiTemp} onChange={setPsiTemp} />
+            <ScoreCheck label="FC ≥125" checked={psiHr} onChange={setPsiHr} />
+            <ScoreCheck label="pH <7.35" checked={psiPh} onChange={setPsiPh} />
+            <ScoreCheck label="BUN ≥30" checked={psiBun} onChange={setPsiBun} />
+            <ScoreCheck label="Na <130" checked={psiNa} onChange={setPsiNa} />
+            <ScoreCheck label="Glu ≥250" checked={psiGlu} onChange={setPsiGlu} />
+            <ScoreCheck label="Hto <30" checked={psiHto} onChange={setPsiHto} />
+            <ScoreCheck label="SatO2 <90%" checked={psiO2} onChange={setPsiO2} />
+            <ScoreCheck label="Derrame pleural" checked={psiEffusion} onChange={setPsiEffusion} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="PSI" value={`${psiScore} puntos · ${psiClass}`} />
+          </div>
+        </div>
+        {/* APACHE II */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">APACHE II</h3>
+              <p className="text-sm text-slate-400">Índice de severidad en UCI.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {apache.total} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-6">
+            <Field label="Edad" value={apacheAge} onChange={setApacheAge} suffix="años" />
+            <Field label="Temp" value={apacheTemp} onChange={setApacheTemp} suffix="°C" />
+            <Field label="PAM" value={apacheMap} onChange={setApacheMap} suffix="mmHg" />
+            <Field label="FC" value={apacheHr} onChange={setApacheHr} suffix="lpm" />
+            <Field label="FR" value={apacheRr} onChange={setApacheRr} suffix="rpm" />
+            <Field label="Na" value={apacheNa} onChange={setApacheNa} suffix="mEq/L" />
+            <Field label="K" value={apacheK} onChange={setApacheK} suffix="mEq/L" />
+            <Field label="Cr" value={apacheCr} onChange={setApacheCr} suffix="mg/dl" />
+            <Field label="Hto" value={apacheHto} onChange={setApacheHto} suffix="%" />
+            <Field label="Leucos" value={apacheWbc} onChange={setApacheWbc} suffix="mil/mm³" />
+            <Field label="GCS" value={apacheGcs} onChange={setApacheGcs} />
+            <ScoreCheck label="Enfermedad crónica grave" checked={apacheChronic} onChange={setApacheChronic} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="APACHE II" value={`${apache.total} punto(s)`} />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
