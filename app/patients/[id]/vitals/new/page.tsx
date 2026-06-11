@@ -1,9 +1,8 @@
-
-
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function NewPatientVitalsPage({
   params,
@@ -35,8 +34,8 @@ export default async function NewPatientVitalsPage({
     const peso = String(formData.get("peso") ?? "").trim();
     const notes = String(formData.get("notes") ?? "").trim();
 
-    await supabase.from("patient_vitals").insert({
-      patient_id: id,
+const { error } = await supabase.from("patient_vitals").insert({      patient_id: id,
+      team_id: CURRENT_TEAM_ID,
       recorded_at: recorded_at || new Date().toISOString(),
       ta: ta || null,
       fc: fc || null,
@@ -48,7 +47,10 @@ export default async function NewPatientVitalsPage({
       peso: peso || null,
       notes: notes || null,
     });
-
+if (error) {
+  console.error("Error al guardar SV:", error.message);
+  return;
+}
     redirect(`/patients/${id}`);
   }
 
