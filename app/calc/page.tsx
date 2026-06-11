@@ -297,6 +297,94 @@ function ElectrolyteCalculator() {
   );
 }
 
+function ElectrolyteReplacementCalculator() {
+  const [potassium, setPotassium] = useState("3.0");
+  const [magnesium, setMagnesium] = useState("1.6");
+  const [phosphorus, setPhosphorus] = useState("2.0");
+  const [renalRisk, setRenalRisk] = useState(false);
+
+  const result = useMemo(() => {
+    const k = toNumber(potassium);
+    const mg = toNumber(magnesium);
+    const p = toNumber(phosphorus);
+
+    const kPlan =
+      k <= 2.5
+        ? "KCl 40–60 mEq IV con monitorización; repetir control."
+        : k < 3
+          ? "KCl 40 mEq IV/VO y control posterior."
+          : k < 3.5
+            ? "KCl 20–40 mEq VO/IV según tolerancia."
+            : "Sin reposición urgente.";
+
+    const mgPlan =
+      mg < 1.2
+        ? "MgSO4 4 g IV y control posterior."
+        : mg < 1.6
+          ? "MgSO4 2–4 g IV según contexto."
+          : mg < 1.8
+            ? "MgSO4 1–2 g si riesgo arrítmico o hipokalemia."
+            : "Sin reposición urgente.";
+
+    const pPlan =
+      p < 1
+        ? "Fósforo severo: considerar KPO4/NaPO4 IV con vigilancia."
+        : p < 2
+          ? "Reposición de fósforo IV/VO según gravedad y síntomas."
+          : p < 2.5
+            ? "Reposición oral si tolera; revisar nutrición y causas."
+            : "Sin reposición urgente.";
+
+    const warning = renalRisk
+      ? "ERC/oliguria: reducir dosis, evitar sobrecorrección y controlar niveles con más frecuencia."
+      : "Ajustar a función renal, ECG, síntomas, vía disponible y protocolo local.";
+
+    return { kPlan, mgPlan, pPlan, warning };
+  }, [potassium, magnesium, phosphorus, renalRisk]);
+
+  return (
+    <section id="reposicion" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Reposición de electrolitos</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Sugerencias rápidas para KCl, MgSO4 y fósforo.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Field label="K" value={potassium} onChange={setPotassium} suffix="mEq/L" />
+        <Field label="Mg" value={magnesium} onChange={setMagnesium} suffix="mg/dl" />
+        <Field label="P" value={phosphorus} onChange={setPhosphorus} suffix="mg/dl" />
+        <label
+          className={`flex cursor-pointer items-center rounded-2xl border p-4 text-sm font-semibold transition ${
+            renalRisk
+              ? "border-amber-300/50 bg-amber-400/15 text-amber-100"
+              : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={renalRisk}
+            onChange={(event) => setRenalRisk(event.target.checked)}
+            className="mr-2"
+          />
+          ERC / oliguria
+        </label>
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <ResultCard title="Potasio" value={result.kPlan} />
+        <ResultCard title="Magnesio" value={result.mgPlan} />
+        <ResultCard title="Fósforo" value={result.pPlan} />
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+        {result.warning}
+      </div>
+    </section>
+  );
+}
+
 function RenalAnticoagulationCalculator() {
   const [age, setAge] = useState("65");
   const [weight, setWeight] = useState("70");
@@ -747,6 +835,7 @@ export default function CalcPage() {
             {[
               ["Infusiones", "#infusiones"],
               ["Electrolitos", "#electrolitos"],
+              ["Reposición", "#reposicion"],
               ["Renal/ACO", "#renal"],
               ["VMI", "#vmi"],
               ["Escalas", "#escalas"],
@@ -770,6 +859,7 @@ export default function CalcPage() {
         <div className="space-y-6">
           <InfusionCalculator />
           <ElectrolyteCalculator />
+          <ElectrolyteReplacementCalculator />
           <RenalAnticoagulationCalculator />
           <MechanicalVentilationCalculator />
           <QuickScores />
