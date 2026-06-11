@@ -458,59 +458,261 @@ const pbw =
 }
 
 function QuickScores() {
-  const [confusion, setConfusion] = useState(false);
-  const [urea, setUrea] = useState(false);
-  const [rr, setRr] = useState(false);
-  const [bp, setBp] = useState(false);
-  const [age65, setAge65] = useState(false);
+  const [curbConfusion, setCurbConfusion] = useState(false);
+  const [curbUrea, setCurbUrea] = useState(false);
+  const [curbRr, setCurbRr] = useState(false);
+  const [curbBp, setCurbBp] = useState(false);
+  const [curbAge65, setCurbAge65] = useState(false);
 
-  const curb65 = [confusion, urea, rr, bp, age65].filter(Boolean).length;
-  const interpretation =
+  const [chadsChf, setChadsChf] = useState(false);
+  const [chadsHtn, setChadsHtn] = useState(false);
+  const [chadsAge75, setChadsAge75] = useState(false);
+  const [chadsDm, setChadsDm] = useState(false);
+  const [chadsStroke, setChadsStroke] = useState(false);
+  const [chadsVascular, setChadsVascular] = useState(false);
+  const [chadsAge65, setChadsAge65] = useState(false);
+  const [chadsFemale, setChadsFemale] = useState(false);
+
+  const [hasHtn, setHasHtn] = useState(false);
+  const [hasRenal, setHasRenal] = useState(false);
+  const [hasLiver, setHasLiver] = useState(false);
+  const [hasStroke, setHasStroke] = useState(false);
+  const [hasBleed, setHasBleed] = useState(false);
+  const [hasLabile, setHasLabile] = useState(false);
+  const [hasElderly, setHasElderly] = useState(false);
+  const [hasDrugs, setHasDrugs] = useState(false);
+  const [hasAlcohol, setHasAlcohol] = useState(false);
+
+  const [pesiAge, setPesiAge] = useState("65");
+  const [pesiMale, setPesiMale] = useState(false);
+  const [pesiCancer, setPesiCancer] = useState(false);
+  const [pesiHeartFailure, setPesiHeartFailure] = useState(false);
+  const [pesiChronicLung, setPesiChronicLung] = useState(false);
+  const [pesiHr, setPesiHr] = useState(false);
+  const [pesiSbp, setPesiSbp] = useState(false);
+  const [pesiRr, setPesiRr] = useState(false);
+  const [pesiTemp, setPesiTemp] = useState(false);
+  const [pesiAltered, setPesiAltered] = useState(false);
+  const [pesiO2, setPesiO2] = useState(false);
+
+  const curb65 = [curbConfusion, curbUrea, curbRr, curbBp, curbAge65].filter(Boolean).length;
+  const curbInterpretation =
     curb65 <= 1
       ? "Bajo riesgo"
       : curb65 === 2
         ? "Riesgo intermedio"
         : "Alto riesgo; valorar hospitalización/UTI según contexto";
 
-  const checks = [
-    ["Confusión", confusion, setConfusion],
-    ["Urea elevada", urea, setUrea],
-    ["FR ≥30", rr, setRr],
-    ["TA baja", bp, setBp],
-    ["Edad ≥65", age65, setAge65],
-  ] as const;
+  const chadsvasc =
+    Number(chadsChf) +
+    Number(chadsHtn) +
+    Number(chadsAge75) * 2 +
+    Number(chadsDm) +
+    Number(chadsStroke) * 2 +
+    Number(chadsVascular) +
+    Number(chadsAge65) +
+    Number(chadsFemale);
+  const chadsInterpretation =
+    chadsvasc === 0
+      ? "Riesgo bajo"
+      : chadsvasc === 1
+        ? "Riesgo intermedio; individualizar"
+        : "Riesgo elevado; valorar anticoagulación si no hay contraindicación";
+
+  const hasBled =
+    Number(hasHtn) +
+    Number(hasRenal) +
+    Number(hasLiver) +
+    Number(hasStroke) +
+    Number(hasBleed) +
+    Number(hasLabile) +
+    Number(hasElderly) +
+    Number(hasDrugs) +
+    Number(hasAlcohol);
+  const hasInterpretation =
+    hasBled >= 3
+      ? "Riesgo alto de sangrado; corregir factores modificables"
+      : "Riesgo no alto; vigilar según contexto";
+
+  const pesiScore =
+    toNumber(pesiAge) +
+    Number(pesiMale) * 10 +
+    Number(pesiCancer) * 30 +
+    Number(pesiHeartFailure) * 10 +
+    Number(pesiChronicLung) * 10 +
+    Number(pesiHr) * 20 +
+    Number(pesiSbp) * 30 +
+    Number(pesiRr) * 20 +
+    Number(pesiTemp) * 20 +
+    Number(pesiAltered) * 60 +
+    Number(pesiO2) * 20;
+
+  const pesiClass =
+    pesiScore <= 65
+      ? "Clase I"
+      : pesiScore <= 85
+        ? "Clase II"
+        : pesiScore <= 105
+          ? "Clase III"
+          : pesiScore <= 125
+            ? "Clase IV"
+            : "Clase V";
+
+  const pesiInterpretation =
+    pesiScore <= 65
+      ? "Riesgo muy bajo, mortalidad aproximada ~1%."
+      : pesiScore <= 85
+        ? "Riesgo bajo."
+        : pesiScore <= 105
+          ? "Riesgo intermedio."
+          : pesiScore <= 125
+            ? "Riesgo alto."
+            : "Riesgo muy alto; considerar vigilancia estrecha/UCI según contexto.";
+
+  const ScoreCheck = ({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+  }) => (
+    <label
+      className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
+        checked
+          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+          : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mr-2"
+      />
+      {label}
+    </label>
+  );
 
   return (
     <section id="escalas" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Escalas rápidas</h2>
-        <p className="mt-1 text-sm text-slate-400">CURB-65 interactivo para NAC.</p>
+        <p className="mt-1 text-sm text-slate-400">
+          Puntajes interactivos frecuentes para guardia, pase de visita y decisiones iniciales.
+        </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-5">
-        {checks.map(([label, checked, setter]) => (
-          <label
-            key={label}
-            className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
-              checked
-                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
-                : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={(event) => setter(event.target.checked)}
-              className="mr-2"
-            />
-            {label}
-          </label>
-        ))}
-      </div>
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">CURB-65</h3>
+              <p className="text-sm text-slate-400">Neumonía adquirida en la comunidad.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {curb65} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            <ScoreCheck label="Confusión" checked={curbConfusion} onChange={setCurbConfusion} />
+            <ScoreCheck label="Urea elevada" checked={curbUrea} onChange={setCurbUrea} />
+            <ScoreCheck label="FR ≥30" checked={curbRr} onChange={setCurbRr} />
+            <ScoreCheck label="TA baja" checked={curbBp} onChange={setCurbBp} />
+            <ScoreCheck label="Edad ≥65" checked={curbAge65} onChange={setCurbAge65} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="CURB-65" value={`${curb65} punto(s)`} />
+            <ResultCard title="Interpretación" value={curbInterpretation} />
+          </div>
+        </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <ResultCard title="CURB-65" value={`${curb65} punto(s)`} />
-        <ResultCard title="Interpretación" value={interpretation} />
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">CHA2DS2-VASc</h3>
+              <p className="text-sm text-slate-400">Riesgo embólico en fibrilación auricular.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {chadsvasc} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <ScoreCheck label="IC" checked={chadsChf} onChange={setChadsChf} />
+            <ScoreCheck label="HTA" checked={chadsHtn} onChange={setChadsHtn} />
+            <ScoreCheck label="Edad ≥75 +2" checked={chadsAge75} onChange={setChadsAge75} />
+            <ScoreCheck label="DM" checked={chadsDm} onChange={setChadsDm} />
+            <ScoreCheck label="EVC/TIA +2" checked={chadsStroke} onChange={setChadsStroke} />
+            <ScoreCheck label="Vascular" checked={chadsVascular} onChange={setChadsVascular} />
+            <ScoreCheck label="Edad 65–74" checked={chadsAge65} onChange={setChadsAge65} />
+            <ScoreCheck label="Sexo femenino" checked={chadsFemale} onChange={setChadsFemale} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="CHA2DS2-VASc" value={`${chadsvasc} punto(s)`} />
+            <ResultCard title="Interpretación" value={chadsInterpretation} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">HAS-BLED</h3>
+              <p className="text-sm text-slate-400">Riesgo de sangrado en anticoagulación.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {hasBled} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <ScoreCheck label="HTA" checked={hasHtn} onChange={setHasHtn} />
+            <ScoreCheck label="Renal" checked={hasRenal} onChange={setHasRenal} />
+            <ScoreCheck label="Hepático" checked={hasLiver} onChange={setHasLiver} />
+            <ScoreCheck label="EVC" checked={hasStroke} onChange={setHasStroke} />
+            <ScoreCheck label="Sangrado" checked={hasBleed} onChange={setHasBleed} />
+            <ScoreCheck label="INR lábil" checked={hasLabile} onChange={setHasLabile} />
+            <ScoreCheck label="Edad >65" checked={hasElderly} onChange={setHasElderly} />
+            <ScoreCheck label="Fármacos" checked={hasDrugs} onChange={setHasDrugs} />
+            <ScoreCheck label="Alcohol" checked={hasAlcohol} onChange={setHasAlcohol} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="HAS-BLED" value={`${hasBled} punto(s)`} />
+            <ResultCard title="Interpretación" value={hasInterpretation} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">PESI</h3>
+              <p className="text-sm text-slate-400">
+                Cálculo automático de riesgo en tromboembolia pulmonar.
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {pesiScore} punto(s)
+            </span>
+          </div>
+          <div className="mb-4 grid gap-3 md:grid-cols-3">
+            <Field label="Edad" value={pesiAge} onChange={setPesiAge} suffix="años" />
+            <ScoreCheck label="Masculino +10" checked={pesiMale} onChange={setPesiMale} />
+            <ScoreCheck label="Cáncer +30" checked={pesiCancer} onChange={setPesiCancer} />
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <ScoreCheck label="Insuficiencia cardiaca +10" checked={pesiHeartFailure} onChange={setPesiHeartFailure} />
+            <ScoreCheck label="Enfermedad pulmonar crónica +10" checked={pesiChronicLung} onChange={setPesiChronicLung} />
+            <ScoreCheck label="FC ≥110 +20" checked={pesiHr} onChange={setPesiHr} />
+            <ScoreCheck label="PAS <100 +30" checked={pesiSbp} onChange={setPesiSbp} />
+            <ScoreCheck label="FR ≥30 +20" checked={pesiRr} onChange={setPesiRr} />
+            <ScoreCheck label="Temp <36°C +20" checked={pesiTemp} onChange={setPesiTemp} />
+            <ScoreCheck label="Estado mental alterado +60" checked={pesiAltered} onChange={setPesiAltered} />
+            <ScoreCheck label="SatO2 <90% +20" checked={pesiO2} onChange={setPesiO2} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="PESI" value={`${pesiScore} puntos · ${pesiClass}`} />
+            <ResultCard title="Interpretación" value={pesiInterpretation} />
+          </div>
+        </div>
       </div>
     </section>
   );
