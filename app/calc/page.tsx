@@ -144,6 +144,53 @@ function ResultCard({
   );
 }
 
+function ScoreCheck({
+  label,
+  checked,
+  onChange,
+  compact = false,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (value: boolean) => void;
+  compact?: boolean;
+}) {
+  return (
+    <label
+      className={`cursor-pointer rounded-2xl border text-sm font-semibold transition ${
+        compact ? "px-4 py-3" : "p-4"
+      } ${
+        checked
+          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+          : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mr-2"
+      />
+      {label}
+    </label>
+  );
+}
+
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="mb-5">
+      <h2 className="text-2xl font-bold text-white">{title}</h2>
+      <p className="mt-1 text-sm text-slate-400">{description}</p>
+    </div>
+  );
+}
+
 function InfusionCalculator() {
   const [drugName, setDrugName] = useState("Norepinefrina");
   const selectedDrug =
@@ -833,8 +880,7 @@ export default function CalcPage() {
               </p>
               <h1 className="mt-2 text-4xl font-bold">Calculadoras automáticas</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Módulo práctico para guardia: infusiones, electrolitos, función renal,
-                anticoagulación y escalas rápidas.
+                Módulo práctico para guardia y pase de visita: infusiones, electrolitos, función renal, ventilación mecánica y escalas clínicas agrupadas por área.
               </p>
             </div>
 
@@ -846,7 +892,7 @@ export default function CalcPage() {
             </Link>
           </div>
 
-          <nav className="mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527] p-2">
+          <nav className="sticky top-3 z-20 mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527]/95 p-2 shadow-xl backdrop-blur">
             {[
               ["Infusiones", "#infusiones"],
               ["Electrolitos", "#electrolitos"],
@@ -854,8 +900,10 @@ export default function CalcPage() {
               ["Renal/ACO", "#renal"],
               ["VMI", "#vmi"],
               ["Escalas", "#escalas"],
+              ["Urgencias", "#urgencias"],
               ["UCI", "#uci-scores"],
               ["Cardiología", "#cardio-scores"],
+              ["Gastro", "#gastro-scores"],
             ].map(([label, href]) => (
               <a
                 key={href}
@@ -869,22 +917,280 @@ export default function CalcPage() {
         </header>
 
         <section className="mb-8 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-          Apoyo clínico para residentes. Ajusta siempre a protocolo local, contexto del paciente,
-          metas clínicas, función renal y criterio médico.
+          Apoyo clínico para residentes. Las fórmulas y puntajes orientan decisiones, pero deben ajustarse a protocolo local, contexto del paciente, metas clínicas, función renal y criterio médico.
         </section>
 
-        <div className="space-y-6">
+        <div className="space-y-8 scroll-smooth">
           <InfusionCalculator />
           <ElectrolyteCalculator />
           <ElectrolyteReplacementCalculator />
           <RenalAnticoagulationCalculator />
           <MechanicalVentilationCalculator />
           <QuickScores />
+          <UrgencyScoresCalculator />
           <IcuScoresCalculator />
           <CardiologyScoresCalculator />
+          <GastroScoresCalculator />
         </div>
       </div>
     </main>
+  );
+}
+
+function UrgencyScoresCalculator() {
+  // Glasgow
+  const [glasgowEye, setGlasgowEye] = useState("4");
+  const [glasgowVerbal, setGlasgowVerbal] = useState("5");
+  const [glasgowMotor, setGlasgowMotor] = useState("6");
+  const glasgowTotal = useMemo(() => {
+    return (
+      toNumber(glasgowEye) +
+      toNumber(glasgowVerbal) +
+      toNumber(glasgowMotor)
+    );
+  }, [glasgowEye, glasgowVerbal, glasgowMotor]);
+  const glasgowInterp =
+    glasgowTotal <= 8
+      ? "Grave (≤8)"
+      : glasgowTotal <= 12
+      ? "Moderado (9-12)"
+      : "Leve (13-15)";
+
+  // SIRS
+  const [sirsTemp, setSirsTemp] = useState(false);
+  const [sirsFc, setSirsFc] = useState(false);
+  const [sirsFr, setSirsFr] = useState(false);
+  const [sirsLeucos, setSirsLeucos] = useState(false);
+  const sirsScore = [sirsTemp, sirsFc, sirsFr, sirsLeucos].filter(Boolean).length;
+  const sirsInterp =
+    sirsScore >= 2 ? "Cumple criterios SIRS (≥2)" : "No cumple SIRS (<2)";
+
+  // ASA
+  const [asa, setAsa] = useState("I");
+  const [asaUrgent, setAsaUrgent] = useState(false);
+  const asaDisplay = asa + (asaUrgent ? "-E" : "");
+
+  // Calcio corregido
+  const [calciumTotal, setCalciumTotal] = useState("8.0");
+  const [albumin, setAlbumin] = useState("3.0");
+  const calcioCorr = useMemo(() => {
+    const ca = toNumber(calciumTotal);
+    const alb = toNumber(albumin);
+    return ca + 0.8 * (4 - alb);
+  }, [calciumTotal, albumin]);
+  let calcioInterp = "";
+  if (calcioCorr < 8.5) calcioInterp = "Hipocalcemia";
+  else if (calcioCorr > 10.5) calcioInterp = "Hipercalcemia";
+  else calcioInterp = "Normal";
+
+  // Checkbox style
+  function ScoreCheck({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+  }) {
+    return (
+      <label
+        className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
+          checked
+            ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+            : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mr-2"
+        />
+        {label}
+      </label>
+    );
+  }
+
+  return (
+    <section
+      id="urgencias"
+      className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl"
+    >
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Urgencias</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Escalas clave para valoración inicial y urgencias: Glasgow, SIRS, ASA y calcio corregido.
+        </p>
+      </div>
+      <div className="space-y-6">
+        {/* Glasgow */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Glasgow</h3>
+              <p className="text-sm text-slate-400">
+                Escala de coma de Glasgow (E+V+M).
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {glasgowTotal} punto(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">
+                Ocular
+              </span>
+              <select
+                value={glasgowEye}
+                onChange={e => setGlasgowEye(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="4">4 Espontánea</option>
+                <option value="3">3 Al habla</option>
+                <option value="2">2 Al dolor</option>
+                <option value="1">1 Ninguna</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">
+                Verbal
+              </span>
+              <select
+                value={glasgowVerbal}
+                onChange={e => setGlasgowVerbal(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="5">5 Orientado</option>
+                <option value="4">4 Confuso</option>
+                <option value="3">3 Palabras inapropiadas</option>
+                <option value="2">2 Sonidos incomprensibles</option>
+                <option value="1">1 Ninguna</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">
+                Motora
+              </span>
+              <select
+                value={glasgowMotor}
+                onChange={e => setGlasgowMotor(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="6">6 Obedece órdenes</option>
+                <option value="5">5 Localiza dolor</option>
+                <option value="4">4 Retira al dolor</option>
+                <option value="3">3 Flexión anormal</option>
+                <option value="2">2 Extensión anormal</option>
+                <option value="1">1 Ninguna</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="Total" value={`${glasgowTotal} punto(s)`} />
+            <ResultCard title="Interpretación" value={glasgowInterp} />
+          </div>
+        </div>
+        {/* SIRS */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">SIRS</h3>
+              <p className="text-sm text-slate-400">
+                Criterios de respuesta inflamatoria sistémica.
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {sirsScore} criterio(s)
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <ScoreCheck label="Temperatura anormal" checked={sirsTemp} onChange={setSirsTemp} />
+            <ScoreCheck label="FC &gt;90" checked={sirsFc} onChange={setSirsFc} />
+            <ScoreCheck label="FR &gt;20 o PaCO₂ &lt;32" checked={sirsFr} onChange={setSirsFr} />
+            <ScoreCheck label="Leucos anormales" checked={sirsLeucos} onChange={setSirsLeucos} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="SIRS" value={`${sirsScore} criterio(s)`} />
+            <ResultCard title="Interpretación" value={sirsInterp} />
+          </div>
+        </div>
+        {/* ASA */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">ASA</h3>
+              <p className="text-sm text-slate-400">
+                Clasificación de riesgo anestésico (ASA).
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {asaDisplay}
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">
+                ASA
+              </span>
+              <select
+                value={asa}
+                onChange={e => setAsa(e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="I">I</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+                <option value="V">V</option>
+                <option value="VI">VI</option>
+              </select>
+            </label>
+            <label
+              className={`flex cursor-pointer items-center rounded-2xl border p-4 text-sm font-semibold transition ${
+                asaUrgent
+                  ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+                  : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={asaUrgent}
+                onChange={e => setAsaUrgent(e.target.checked)}
+                className="mr-2"
+              />
+              Cirugía de urgencia
+            </label>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="ASA" value={asaDisplay} />
+          </div>
+        </div>
+        {/* Calcio corregido */}
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Calcio corregido</h3>
+              <p className="text-sm text-slate-400">
+                Corrección por albúmina: Ca corregido = Ca + 0.8 × (4 - albúmina)
+              </p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {round(calcioCorr, 2)} mg/dl
+            </span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Ca total" value={calciumTotal} onChange={setCalciumTotal} suffix="mg/dl" />
+            <Field label="Albúmina" value={albumin} onChange={setAlbumin} suffix="g/dl" />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="Ca corregido" value={`${round(calcioCorr, 2)} mg/dl`} />
+            <ResultCard title="Interpretación" value={calcioInterp} />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -900,6 +1206,49 @@ function CardiologyScoresCalculator() {
   const [rcriCva, setRcriCva] = useState(false);
   const [rcriInsulin, setRcriInsulin] = useState(false);
   const [rcriCr, setRcriCr] = useState(false);
+
+  const [chads2Chf, setChads2Chf] = useState(false);
+  const [chads2Htn, setChads2Htn] = useState(false);
+  const [chads2Age, setChads2Age] = useState(false);
+  const [chads2Dm, setChads2Dm] = useState(false);
+  const [chads2Stroke, setChads2Stroke] = useState(false);
+
+  const [timiNstemiAge, setTimiNstemiAge] = useState(false);
+  const [timiNstemiRiskFactors, setTimiNstemiRiskFactors] = useState(false);
+  const [timiNstemiCad, setTimiNstemiCad] = useState(false);
+  const [timiNstemiAspirin, setTimiNstemiAspirin] = useState(false);
+  const [timiNstemiAngina, setTimiNstemiAngina] = useState(false);
+  const [timiNstemiSt, setTimiNstemiSt] = useState(false);
+  const [timiNstemiMarkers, setTimiNstemiMarkers] = useState(false);
+
+  const [timiStemiAge, setTimiStemiAge] = useState("0");
+  const [timiStemiDmHtnAngina, setTimiStemiDmHtnAngina] = useState(false);
+  const [timiStemiSbp, setTimiStemiSbp] = useState(false);
+  const [timiStemiHr, setTimiStemiHr] = useState(false);
+  const [timiStemiKillip, setTimiStemiKillip] = useState(false);
+  const [timiStemiWeight, setTimiStemiWeight] = useState(false);
+  const [timiStemiAnteriorLbbb, setTimiStemiAnteriorLbbb] = useState(false);
+  const [timiStemiDelay, setTimiStemiDelay] = useState(false);
+
+  const [graceAge, setGraceAge] = useState("65");
+  const [graceHr, setGraceHr] = useState("90");
+  const [graceSbp, setGraceSbp] = useState("120");
+  const [graceCr, setGraceCr] = useState("1.0");
+  const [graceKillip, setGraceKillip] = useState("I");
+  const [graceArrest, setGraceArrest] = useState(false);
+  const [graceSt, setGraceSt] = useState(false);
+  const [graceTroponin, setGraceTroponin] = useState(false);
+  // PREVENT state variables
+  const [preventAge, setPreventAge] = useState("55");
+  const [preventSex, setPreventSex] = useState("male");
+  const [preventSbp, setPreventSbp] = useState("120");
+  const [preventTotalChol, setPreventTotalChol] = useState("180");
+  const [preventHdl, setPreventHdl] = useState("50");
+  const [preventEgfr, setPreventEgfr] = useState("90");
+  const [preventDiabetes, setPreventDiabetes] = useState(false);
+  const [preventSmoker, setPreventSmoker] = useState(false);
+  const [preventBpTreatment, setPreventBpTreatment] = useState(false);
+  const [preventStatin, setPreventStatin] = useState(false);
 
   const shockIndex = useMemo(() => {
     const hr = toNumber(shockHr);
@@ -924,6 +1273,123 @@ function CardiologyScoresCalculator() {
         : rcri === 2
           ? "Riesgo elevado"
           : "Riesgo alto";
+
+  const chads2 =
+    Number(chads2Chf) +
+    Number(chads2Htn) +
+    Number(chads2Age) +
+    Number(chads2Dm) +
+    Number(chads2Stroke) * 2;
+
+  const chads2Risk = chads2 === 0 ? "Bajo" : chads2 === 1 ? "Intermedio" : "Alto";
+
+  const timiNstemi = [
+    timiNstemiAge,
+    timiNstemiRiskFactors,
+    timiNstemiCad,
+    timiNstemiAspirin,
+    timiNstemiAngina,
+    timiNstemiSt,
+    timiNstemiMarkers,
+  ].filter(Boolean).length;
+
+  const timiNstemiRisk = timiNstemi <= 2 ? "Bajo" : timiNstemi <= 4 ? "Intermedio" : "Alto";
+
+  const timiStemi =
+    toNumber(timiStemiAge) +
+    Number(timiStemiDmHtnAngina) +
+    Number(timiStemiSbp) * 3 +
+    Number(timiStemiHr) * 2 +
+    Number(timiStemiKillip) * 2 +
+    Number(timiStemiWeight) +
+    Number(timiStemiAnteriorLbbb) +
+    Number(timiStemiDelay);
+
+  const timiStemiRisk = timiStemi <= 2 ? "Bajo" : timiStemi <= 5 ? "Intermedio" : "Alto";
+
+  const grace = useMemo(() => {
+    const age = toNumber(graceAge);
+    const hr = toNumber(graceHr);
+    const sbp = toNumber(graceSbp);
+    const cr = toNumber(graceCr);
+
+    const agePts = age >= 90 ? 100 : age >= 80 ? 91 : age >= 70 ? 73 : age >= 60 ? 55 : age >= 50 ? 36 : age >= 40 ? 18 : 0;
+    const hrPts = hr >= 200 ? 46 : hr >= 150 ? 43 : hr >= 110 ? 23 : hr >= 70 ? 9 : hr >= 50 ? 3 : 0;
+    const sbpPts = sbp < 80 ? 63 : sbp < 100 ? 58 : sbp < 120 ? 47 : sbp < 140 ? 37 : sbp < 160 ? 26 : sbp < 200 ? 11 : 0;
+    const crPts = cr >= 4 ? 28 : cr >= 2 ? 21 : cr >= 1.6 ? 13 : cr >= 1.2 ? 10 : cr >= 0.8 ? 4 : 1;
+    const killipPts = graceKillip === "IV" ? 59 : graceKillip === "III" ? 39 : graceKillip === "II" ? 20 : 0;
+    const arrestPts = graceArrest ? 39 : 0;
+    const stPts = graceSt ? 28 : 0;
+    const tropPts = graceTroponin ? 14 : 0;
+    const total = agePts + hrPts + sbpPts + crPts + killipPts + arrestPts + stPts + tropPts;
+    const risk = total < 109 ? "Bajo" : total <= 140 ? "Intermedio" : "Alto";
+    return { total, risk };
+  }, [graceAge, graceHr, graceSbp, graceCr, graceKillip, graceArrest, graceSt, graceTroponin]);
+
+  // PREVENT-style risk estimator
+  const prevent = useMemo(() => {
+    let score = 0;
+    const age = toNumber(preventAge);
+    // Age points
+    if (age < 40) score += 0;
+    else if (age < 50) score += 2;
+    else if (age < 60) score += 4;
+    else if (age < 70) score += 6;
+    else score += 8;
+    // SBP points
+    const sbp = toNumber(preventSbp);
+    if (sbp < 120) score += 0;
+    else if (sbp < 140) score += 1;
+    else if (sbp < 160) score += 2;
+    else score += 3;
+    // Total cholesterol
+    const chol = toNumber(preventTotalChol);
+    if (chol >= 240) score += 2;
+    else if (chol >= 200) score += 1;
+    // HDL
+    const hdl = toNumber(preventHdl);
+    if (hdl < 40) score += 2;
+    else if (hdl < 50) score += 1;
+    // eGFR
+    const egfr = toNumber(preventEgfr);
+    if (egfr < 45) score += 2;
+    else if (egfr < 60) score += 1;
+    // Diabetes
+    if (preventDiabetes) score += 3;
+    // Smoker
+    if (preventSmoker) score += 3;
+    // BP treatment
+    if (preventBpTreatment) score += 1;
+    // No statin
+    if (!preventStatin) score += 1;
+    // Map score to 10-year risk
+    let risk10 = 3;
+    if (score <= 3) risk10 = 3;
+    else if (score <= 6) risk10 = 6;
+    else if (score <= 9) risk10 = 12;
+    else if (score <= 12) risk10 = 20;
+    else risk10 = 30;
+    // 30-year risk
+    let risk30 = Math.min(risk10 * 2.5, 60);
+    // Category
+    let category = "";
+    if (risk10 < 5) category = "Bajo";
+    else if (risk10 < 10) category = "Limítrofe";
+    else if (risk10 < 20) category = "Intermedio";
+    else category = "Alto";
+    return { score, risk10, risk30, category };
+  }, [
+    preventAge,
+    preventSex,
+    preventSbp,
+    preventTotalChol,
+    preventHdl,
+    preventEgfr,
+    preventDiabetes,
+    preventSmoker,
+    preventBpTreatment,
+    preventStatin,
+  ]);
 
   const killipDescription =
     killip === "I"
@@ -965,7 +1431,7 @@ function CardiologyScoresCalculator() {
       <div className="mb-5">
         <h2 className="text-2xl font-bold text-white">Cardiología</h2>
         <p className="mt-1 text-sm text-slate-400">
-          Killip-Kimball, Shock Index y RCRI/Lee para valoración cardiovascular rápida.
+          Killip-Kimball, Shock Index, RCRI/Lee, CHADS2, TIMI NSTEMI/STEMI y GRACE.
         </p>
       </div>
 
@@ -976,25 +1442,17 @@ function CardiologyScoresCalculator() {
               <h3 className="text-xl font-bold text-cyan-300">Killip-Kimball</h3>
               <p className="text-sm text-slate-400">Clasificación clínica en síndrome coronario agudo.</p>
             </div>
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
-              Killip {killip}
-            </span>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">Killip {killip}</span>
           </div>
-
           <label className="block">
             <span className="mb-2 block text-sm font-semibold text-slate-300">Clase</span>
-            <select
-              value={killip}
-              onChange={(event) => setKillip(event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
-            >
+            <select value={killip} onChange={(event) => setKillip(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60">
               <option value="I">I: sin insuficiencia cardiaca</option>
               <option value="II">II: estertores/S3/ingurgitación yugular</option>
               <option value="III">III: edema agudo pulmonar</option>
               <option value="IV">IV: choque cardiogénico</option>
             </select>
           </label>
-
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <ResultCard title="Killip" value={`Clase ${killip}`} />
             <ResultCard title="Interpretación" value={killipDescription} />
@@ -1002,21 +1460,11 @@ function CardiologyScoresCalculator() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-cyan-300">Shock Index</h3>
-              <p className="text-sm text-slate-400">FC / presión arterial sistólica.</p>
-            </div>
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
-              {round(shockIndex, 2)}
-            </span>
-          </div>
-
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">Shock Index</h3>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="FC" value={shockHr} onChange={setShockHr} suffix="lpm" />
             <Field label="TAS" value={shockSbp} onChange={setShockSbp} suffix="mmHg" />
           </div>
-
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <ResultCard title="Shock Index" value={`${round(shockIndex, 2)}`} />
             <ResultCard title="Interpretación" value={shockInterpretation} />
@@ -1024,16 +1472,7 @@ function CardiologyScoresCalculator() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-cyan-300">RCRI / Lee</h3>
-              <p className="text-sm text-slate-400">Riesgo cardiaco perioperatorio.</p>
-            </div>
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
-              {rcri} punto(s)
-            </span>
-          </div>
-
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">RCRI / Lee</h3>
           <div className="grid gap-3 md:grid-cols-3">
             <ScoreCheck label="Cirugía de alto riesgo" checked={rcriHighRisk} onChange={setRcriHighRisk} />
             <ScoreCheck label="Cardiopatía isquémica" checked={rcriCad} onChange={setRcriCad} />
@@ -1042,11 +1481,127 @@ function CardiologyScoresCalculator() {
             <ScoreCheck label="DM con insulina" checked={rcriInsulin} onChange={setRcriInsulin} />
             <ScoreCheck label="Creatinina >2 mg/dl" checked={rcriCr} onChange={setRcriCr} />
           </div>
-
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <ResultCard title="RCRI" value={`${rcri} punto(s)`} />
             <ResultCard title="Interpretación" value={rcriRisk} />
           </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">CHADS2</h3>
+          <div className="grid gap-3 md:grid-cols-3">
+            <ScoreCheck label="IC" checked={chads2Chf} onChange={setChads2Chf} />
+            <ScoreCheck label="HTA" checked={chads2Htn} onChange={setChads2Htn} />
+            <ScoreCheck label="Edad ≥75" checked={chads2Age} onChange={setChads2Age} />
+            <ScoreCheck label="DM" checked={chads2Dm} onChange={setChads2Dm} />
+            <ScoreCheck label="EVC/TIA +2" checked={chads2Stroke} onChange={setChads2Stroke} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="CHADS2" value={`${chads2} punto(s)`} />
+            <ResultCard title="Riesgo" value={chads2Risk} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">TIMI NSTEMI / Angina inestable</h3>
+          <div className="grid gap-3 md:grid-cols-3">
+            <ScoreCheck label="Edad ≥65 años" checked={timiNstemiAge} onChange={setTimiNstemiAge} />
+            <ScoreCheck label="≥3 factores de riesgo CAD" checked={timiNstemiRiskFactors} onChange={setTimiNstemiRiskFactors} />
+            <ScoreCheck label="Estenosis coronaria conocida ≥50%" checked={timiNstemiCad} onChange={setTimiNstemiCad} />
+            <ScoreCheck label="AAS en últimos 7 días" checked={timiNstemiAspirin} onChange={setTimiNstemiAspirin} />
+            <ScoreCheck label="≥2 episodios angina/24 h" checked={timiNstemiAngina} onChange={setTimiNstemiAngina} />
+            <ScoreCheck label="Desviación ST" checked={timiNstemiSt} onChange={setTimiNstemiSt} />
+            <ScoreCheck label="Marcadores positivos" checked={timiNstemiMarkers} onChange={setTimiNstemiMarkers} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="TIMI NSTEMI" value={`${timiNstemi} punto(s)`} />
+            <ResultCard title="Riesgo" value={timiNstemiRisk} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">TIMI STEMI</h3>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Edad</span>
+              <select value={timiStemiAge} onChange={(event) => setTimiStemiAge(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60">
+                <option value="0">Menor de 65 años</option>
+                <option value="2">65–74 años</option>
+                <option value="3">≥75 años</option>
+              </select>
+            </label>
+            <ScoreCheck label="DM/HTA/angina" checked={timiStemiDmHtnAngina} onChange={setTimiStemiDmHtnAngina} />
+            <ScoreCheck label="TAS <100" checked={timiStemiSbp} onChange={setTimiStemiSbp} />
+            <ScoreCheck label="FC >100" checked={timiStemiHr} onChange={setTimiStemiHr} />
+            <ScoreCheck label="Killip II–IV" checked={timiStemiKillip} onChange={setTimiStemiKillip} />
+            <ScoreCheck label="Peso <67 kg" checked={timiStemiWeight} onChange={setTimiStemiWeight} />
+            <ScoreCheck label="IAM anterior o BRIHH" checked={timiStemiAnteriorLbbb} onChange={setTimiStemiAnteriorLbbb} />
+            <ScoreCheck label="Tratamiento >4 h" checked={timiStemiDelay} onChange={setTimiStemiDelay} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="TIMI STEMI" value={`${timiStemi} punto(s)`} />
+            <ResultCard title="Riesgo" value={timiStemiRisk} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <h3 className="mb-4 text-xl font-bold text-cyan-300">GRACE</h3>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Field label="Edad" value={graceAge} onChange={setGraceAge} suffix="años" />
+            <Field label="FC" value={graceHr} onChange={setGraceHr} suffix="lpm" />
+            <Field label="TAS" value={graceSbp} onChange={setGraceSbp} suffix="mmHg" />
+            <Field label="Creatinina" value={graceCr} onChange={setGraceCr} suffix="mg/dl" />
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Killip</span>
+              <select value={graceKillip} onChange={(event) => setGraceKillip(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60">
+                <option value="I">I</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+              </select>
+            </label>
+            <ScoreCheck label="Paro al ingreso" checked={graceArrest} onChange={setGraceArrest} />
+            <ScoreCheck label="Desviación ST" checked={graceSt} onChange={setGraceSt} />
+            <ScoreCheck label="Troponina positiva" checked={graceTroponin} onChange={setGraceTroponin} />
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="GRACE" value={`${grace.total} punto(s)`} helper="Estimación práctica por rangos; validar con calculadora oficial si se requiere precisión fina." />
+            <ResultCard title="Riesgo" value={grace.risk} />
+          </div>
+        </div>
+      </div>
+      {/* PREVENT (AHA 2024) */}
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-5 mt-6">
+        <h3 className="mb-4 text-xl font-bold text-cyan-300">PREVENT (AHA 2024)</h3>
+        <div className="grid gap-4 md:grid-cols-5">
+          <Field label="Edad" value={preventAge} onChange={setPreventAge} suffix="años" />
+          <label className="block">
+            <span className="mb-2 block text-sm font-semibold text-slate-300">Sexo</span>
+            <select
+              value={preventSex}
+              onChange={(event) => setPreventSex(event.target.value)}
+              className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+            >
+              <option value="male">Masculino</option>
+              <option value="female">Femenino</option>
+            </select>
+          </label>
+          <Field label="PAS" value={preventSbp} onChange={setPreventSbp} suffix="mmHg" />
+          <Field label="Colesterol total" value={preventTotalChol} onChange={setPreventTotalChol} suffix="mg/dl" />
+          <Field label="HDL" value={preventHdl} onChange={setPreventHdl} suffix="mg/dl" />
+          <Field label="eGFR" value={preventEgfr} onChange={setPreventEgfr} suffix="ml/min" />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
+          <ScoreCheck label="Diabetes" checked={preventDiabetes} onChange={setPreventDiabetes} />
+          <ScoreCheck label="Tabaquismo" checked={preventSmoker} onChange={setPreventSmoker} />
+          <ScoreCheck label="Tratamiento antihipertensivo" checked={preventBpTreatment} onChange={setPreventBpTreatment} />
+          <ScoreCheck label="Uso de estatina" checked={preventStatin} onChange={setPreventStatin} />
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-4">
+          <ResultCard title="PREVENT Score" value={`${prevent.score} punto(s)`} />
+          <ResultCard title="Riesgo 10 años" value={`${prevent.risk10}%`} />
+          <ResultCard title="Riesgo 30 años" value={`${prevent.risk30}%`} />
+          <ResultCard title="Categoría" value={prevent.category} />
         </div>
       </div>
     </section>
@@ -1352,6 +1907,206 @@ function IcuScoresCalculator() {
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <ResultCard title="APACHE II" value={`${apache.total} punto(s)`} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+function GastroScoresCalculator() {
+  const [gbsBun, setGbsBun] = useState("18");
+  const [gbsHb, setGbsHb] = useState("13");
+  const [gbsSbp, setGbsSbp] = useState("120");
+  const [gbsPulse, setGbsPulse] = useState(false);
+  const [gbsMelena, setGbsMelena] = useState(false);
+  const [gbsSyncope, setGbsSyncope] = useState(false);
+  const [gbsHepatic, setGbsHepatic] = useState(false);
+  const [gbsHeartFailure, setGbsHeartFailure] = useState(false);
+
+  const [childBilirubin, setChildBilirubin] = useState("1.0");
+  const [childAlbumin, setChildAlbumin] = useState("3.5");
+  const [childInr, setChildInr] = useState("1.2");
+  const [childAscites, setChildAscites] = useState("1");
+  const [childEncephalopathy, setChildEncephalopathy] = useState("1");
+
+  const [meldBilirubin, setMeldBilirubin] = useState("1.0");
+  const [meldInr, setMeldInr] = useState("1.2");
+  const [meldCreatinine, setMeldCreatinine] = useState("1.0");
+  const [meldSodium, setMeldSodium] = useState("137");
+  const [meldDialysis, setMeldDialysis] = useState(false);
+
+  const ScoreCheck = ({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: (value: boolean) => void;
+  }) => (
+    <label
+      className={`cursor-pointer rounded-2xl border p-4 text-sm font-semibold transition ${
+        checked
+          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100"
+          : "border-white/10 bg-[#061527] text-slate-300 hover:bg-white/10"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mr-2"
+      />
+      {label}
+    </label>
+  );
+
+  const gbs = useMemo(() => {
+    const bun = toNumber(gbsBun);
+    const hb = toNumber(gbsHb);
+    const sbp = toNumber(gbsSbp);
+
+    const bunPts = bun >= 70 ? 6 : bun >= 56 ? 4 : bun >= 28 ? 3 : bun >= 22.4 ? 2 : bun >= 18.2 ? 1 : 0;
+    const hbPts = hb < 10 ? 6 : hb < 12 ? 3 : hb < 13 ? 1 : 0;
+    const sbpPts = sbp < 90 ? 3 : sbp < 100 ? 2 : sbp < 110 ? 1 : 0;
+    const pulsePts = gbsPulse ? 1 : 0;
+    const melenaPts = gbsMelena ? 1 : 0;
+    const syncopePts = gbsSyncope ? 2 : 0;
+    const hepaticPts = gbsHepatic ? 2 : 0;
+    const heartFailurePts = gbsHeartFailure ? 2 : 0;
+    const total = bunPts + hbPts + sbpPts + pulsePts + melenaPts + syncopePts + hepaticPts + heartFailurePts;
+    const risk = total === 0 ? "Muy bajo" : total <= 5 ? "Bajo-intermedio" : "Alto";
+    return { total, risk };
+  }, [gbsBun, gbsHb, gbsSbp, gbsPulse, gbsMelena, gbsSyncope, gbsHepatic, gbsHeartFailure]);
+
+  const child = useMemo(() => {
+    const bilirubin = toNumber(childBilirubin);
+    const albumin = toNumber(childAlbumin);
+    const inr = toNumber(childInr);
+    const bilirubinPts = bilirubin < 2 ? 1 : bilirubin <= 3 ? 2 : 3;
+    const albuminPts = albumin > 3.5 ? 1 : albumin >= 2.8 ? 2 : 3;
+    const inrPts = inr < 1.7 ? 1 : inr <= 2.3 ? 2 : 3;
+    const ascitesPts = toNumber(childAscites);
+    const encephalopathyPts = toNumber(childEncephalopathy);
+    const total = bilirubinPts + albuminPts + inrPts + ascitesPts + encephalopathyPts;
+    const classification = total <= 6 ? "Child-Pugh A" : total <= 9 ? "Child-Pugh B" : "Child-Pugh C";
+    return { total, classification };
+  }, [childBilirubin, childAlbumin, childInr, childAscites, childEncephalopathy]);
+
+  const meldNa = useMemo(() => {
+    const bilirubin = Math.max(toNumber(meldBilirubin), 1);
+    const inr = Math.max(toNumber(meldInr), 1);
+    const creatinine = meldDialysis ? 4 : Math.min(Math.max(toNumber(meldCreatinine), 1), 4);
+    const sodium = Math.min(Math.max(toNumber(meldSodium), 125), 137);
+    const meld = 3.78 * Math.log(bilirubin) + 11.2 * Math.log(inr) + 9.57 * Math.log(creatinine) + 6.43;
+    const cappedMeld = Math.min(Math.max(meld, 6), 40);
+    const total = cappedMeld + 1.32 * (137 - sodium) - 0.033 * cappedMeld * (137 - sodium);
+    const rounded = Math.round(Math.min(Math.max(total, 6), 40));
+    const risk = rounded < 10 ? "Bajo" : rounded < 20 ? "Intermedio" : rounded < 30 ? "Alto" : "Muy alto";
+    return { total: rounded, risk };
+  }, [meldBilirubin, meldInr, meldCreatinine, meldSodium, meldDialysis]);
+
+  return (
+    <section id="gastro-scores" className="rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <div className="mb-5">
+        <h2 className="text-2xl font-bold text-white">Gastro / Hepato</h2>
+        <p className="mt-1 text-sm text-slate-400">
+          Glasgow-Blatchford, Child-Pugh y MELD-Na para guardia y valoración inicial.
+        </p>
+      </div>
+
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Glasgow-Blatchford</h3>
+              <p className="text-sm text-slate-400">Sangrado de tubo digestivo alto.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {gbs.total} punto(s)
+            </span>
+          </div>
+
+          <div className="mb-4 grid gap-4 md:grid-cols-3">
+            <Field label="BUN" value={gbsBun} onChange={setGbsBun} suffix="mg/dl" />
+            <Field label="Hb" value={gbsHb} onChange={setGbsHb} suffix="g/dl" />
+            <Field label="TAS" value={gbsSbp} onChange={setGbsSbp} suffix="mmHg" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-5">
+            <ScoreCheck label="Pulso ≥100" checked={gbsPulse} onChange={setGbsPulse} />
+            <ScoreCheck label="Melena" checked={gbsMelena} onChange={setGbsMelena} />
+            <ScoreCheck label="Síncope" checked={gbsSyncope} onChange={setGbsSyncope} />
+            <ScoreCheck label="Hepatopatía" checked={gbsHepatic} onChange={setGbsHepatic} />
+            <ScoreCheck label="Falla cardiaca" checked={gbsHeartFailure} onChange={setGbsHeartFailure} />
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="GBS" value={`${gbs.total} punto(s)`} />
+            <ResultCard title="Riesgo" value={gbs.risk} helper="GBS 0 suele identificar muy bajo riesgo; individualizar por contexto clínico." />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">Child-Pugh</h3>
+              <p className="text-sm text-slate-400">Clasificación de cirrosis y función hepática.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {child.total} punto(s)
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-5">
+            <Field label="Bilirrubina" value={childBilirubin} onChange={setChildBilirubin} suffix="mg/dl" />
+            <Field label="Albúmina" value={childAlbumin} onChange={setChildAlbumin} suffix="g/dl" />
+            <Field label="INR" value={childInr} onChange={setChildInr} />
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Ascitis</span>
+              <select value={childAscites} onChange={(event) => setChildAscites(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60">
+                <option value="1">Ausente</option>
+                <option value="2">Leve / controlada</option>
+                <option value="3">Moderada-severa</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Encefalopatía</span>
+              <select value={childEncephalopathy} onChange={(event) => setChildEncephalopathy(event.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60">
+                <option value="1">Ausente</option>
+                <option value="2">Grado I-II</option>
+                <option value="3">Grado III-IV</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="Child-Pugh" value={`${child.total} punto(s)`} />
+            <ResultCard title="Clase" value={child.classification} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-cyan-300">MELD-Na</h3>
+              <p className="text-sm text-slate-400">Modelo para enfermedad hepática terminal con sodio.</p>
+            </div>
+            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+              {meldNa.total} punto(s)
+            </span>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-5">
+            <Field label="Bilirrubina" value={meldBilirubin} onChange={setMeldBilirubin} suffix="mg/dl" />
+            <Field label="INR" value={meldInr} onChange={setMeldInr} />
+            <Field label="Creatinina" value={meldCreatinine} onChange={setMeldCreatinine} suffix="mg/dl" />
+            <Field label="Sodio" value={meldSodium} onChange={setMeldSodium} suffix="mEq/L" />
+            <ScoreCheck label="Diálisis" checked={meldDialysis} onChange={setMeldDialysis} />
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <ResultCard title="MELD-Na" value={`${meldNa.total} punto(s)`} />
+            <ResultCard title="Riesgo" value={meldNa.risk} helper="Cálculo aproximado con límites estándar: Cr 1–4, Na 125–137, MELD 6–40." />
           </div>
         </div>
       </div>
