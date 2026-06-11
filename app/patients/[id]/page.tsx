@@ -74,6 +74,15 @@ const noteAuthorMap = new Map(
     .order("created_at", { ascending: false })
     .limit(5);
 
+  const { data: vitalsHistory } = await supabase
+    .from("patient_vitals")
+    .select("*")
+    .eq("patient_id", id)
+    .order("recorded_at", { ascending: false })
+    .limit(5);
+
+  const latestVitals = vitalsHistory?.[0] ?? null;
+
   const { data: problems } = await supabase
     .from("problems")
     .select("*")
@@ -549,6 +558,21 @@ PLAN R++:
       .join(" | ");
   }
 
+  function timelineVitals(vital: any) {
+    return [
+      vital.ta ? `TA ${vital.ta}` : null,
+      vital.fc ? `FC ${vital.fc}` : null,
+      vital.fr ? `FR ${vital.fr}` : null,
+      vital.temp ? `Temp ${vital.temp}` : null,
+      vital.spo2 ? `SpO₂ ${vital.spo2}` : null,
+      vital.glucemia ? `Glu ${vital.glucemia}` : null,
+      vital.diuresis ? `Diuresis ${vital.diuresis}` : null,
+      vital.peso ? `Peso ${vital.peso}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+  }
+
   const timelineItems = [
    ...(notes ?? []).map((note) => {
   const author = note.created_by ? noteAuthorMap.get(note.created_by) : null;
@@ -573,6 +597,15 @@ PLAN R++:
       description: "Registro de laboratorio",
       href: null,
       labId: lab.id,
+    })),
+    ...(vitalsHistory ?? []).map((vital) => ({
+      id: `vital-${vital.id}`,
+      type: "SV del pase",
+      date: vital.recorded_at || vital.created_at,
+      title: timelineVitals(vital) || "Signos vitales capturados",
+      description: vital.notes || "Registro de signos vitales del pase",
+      href: null,
+      vitalId: vital.id,
     })),
     ...(patientImages ?? []).map((image) => ({
       id: `image-${image.id}`,
@@ -604,6 +637,7 @@ PLAN R++:
 
  function timelineBadgeClass(type: string) {
   if (type === "Labs") return "bg-amber-300/10 text-amber-300";
+  if (type === "SV del pase") return "bg-green-300/10 text-green-300";
   if (type === "Imagen") return "bg-purple-300/10 text-purple-300";
   if (type === "Pendiente realizado") return "bg-green-300/10 text-green-300";
   if (type === "VPO generada") return "bg-indigo-300/10 text-indigo-300";
@@ -933,6 +967,100 @@ PLAN R++:
               <p className="text-2xl font-bold">{patient.priority}</p>
             </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-3xl bg-white/10 p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cyan-300">🩺 SV del pase</h2>
+              <p className="text-sm text-slate-400">
+                Registro rápido de signos vitales durante el pase de visita
+              </p>
+            </div>
+
+            <Link
+              href={`/patients/${id}/vitals/new`}
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              + Agregar SV
+            </Link>
+          </div>
+
+          {latestVitals ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-cyan-300/20 bg-[#071A2F] p-4">
+                <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <h3 className="font-semibold text-white">Último registro</h3>
+                  <span className="text-xs text-slate-400">
+                    {timelineDate(latestVitals.recorded_at || latestVitals.created_at)} · {timelineTime(latestVitals.recorded_at || latestVitals.created_at)}
+                  </span>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">TA</p>
+                    <p className="text-xl font-bold">{latestVitals.ta || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">FC</p>
+                    <p className="text-xl font-bold">{latestVitals.fc || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">FR</p>
+                    <p className="text-xl font-bold">{latestVitals.fr || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">Temp</p>
+                    <p className="text-xl font-bold">{latestVitals.temp || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">SpO₂</p>
+                    <p className="text-xl font-bold">{latestVitals.spo2 || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">Glucemia</p>
+                    <p className="text-xl font-bold">{latestVitals.glucemia || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">Diuresis</p>
+                    <p className="text-xl font-bold">{latestVitals.diuresis || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white/5 p-3">
+                    <p className="text-xs text-slate-400">Peso</p>
+                    <p className="text-xl font-bold">{latestVitals.peso || "—"}</p>
+                  </div>
+                </div>
+
+                {latestVitals.notes ? (
+                  <p className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-slate-300">
+                    {latestVitals.notes}
+                  </p>
+                ) : null}
+              </div>
+
+              {(vitalsHistory ?? []).length > 1 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(vitalsHistory ?? []).slice(1).map((vital) => (
+                    <div key={vital.id} className="rounded-2xl bg-[#071A2F] p-4">
+                      <p className="mb-2 text-xs text-slate-400">
+                        {timelineDate(vital.recorded_at || vital.created_at)} · {timelineTime(vital.recorded_at || vital.created_at)}
+                      </p>
+                      <p className="text-sm text-slate-300">
+                        {timelineVitals(vital) || "Registro de signos vitales"}
+                      </p>
+                      {vital.notes ? (
+                        <p className="mt-2 text-xs text-slate-500">{vital.notes}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-400">
+              Sin signos vitales capturados. Agrega los SV del pase para integrarlos al expediente.
+            </div>
+          )}
         </section>
 
         <section className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-6">
