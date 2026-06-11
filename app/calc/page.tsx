@@ -869,6 +869,19 @@ function QuickScores() {
 }
 
 export default function CalcPage() {
+  const calculatorSections = [
+    ["Favoritos", "#favoritos"],
+    ["Infusiones", "#infusiones"],
+    ["Electrolitos", "#electrolitos"],
+    ["Reposición", "#reposicion"],
+    ["Renal/ACO", "#renal"],
+    ["VMI", "#vmi"],
+    ["Escalas", "#escalas"],
+    ["Urgencias", "#urgencias"],
+    ["UCI", "#uci-scores"],
+    ["Cardiología", "#cardio-scores"],
+    ["Gastro", "#gastro-scores"],
+  ];
   return (
     <main className="min-h-screen bg-[#071A2F] p-6 text-white md:p-10">
       <div className="mx-auto max-w-7xl">
@@ -892,20 +905,8 @@ export default function CalcPage() {
             </Link>
           </div>
 
-      <nav className="sticky top-3 z-20 mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527]/95 p-2 shadow-xl backdrop-blur">
-        {[
-          ["Favoritos", "#favoritos"],
-          ["Infusiones", "#infusiones"],
-          ["Electrolitos", "#electrolitos"],
-          ["Reposición", "#reposicion"],
-          ["Renal/ACO", "#renal"],
-          ["VMI", "#vmi"],
-          ["Escalas", "#escalas"],
-          ["Urgencias", "#urgencias"],
-          ["UCI", "#uci-scores"],
-          ["Cardiología", "#cardio-scores"],
-          ["Gastro", "#gastro-scores"],
-        ].map(([label, href]) => (
+      <nav aria-label="Navegación rápida de calculadoras" className="sticky top-3 z-20 mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527]/95 p-2 shadow-xl backdrop-blur lg:hidden">
+        {calculatorSections.map(([label, href]) => (
           <a
             key={href}
             href={href}
@@ -921,52 +922,74 @@ export default function CalcPage() {
           Apoyo clínico para residentes. Las fórmulas y puntajes orientan decisiones, pero deben ajustarse a protocolo local, contexto del paciente, metas clínicas, función renal y criterio médico.
         </section>
 
-        <section id="favoritos" className="mb-8 scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl">
-          <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-white">Favoritos de guardia</h2>
-              <p className="text-sm text-slate-400">
-                Accesos rápidos a las calculadoras que más se usan en piso, urgencias y UCI.
+        <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-8 max-h-[calc(100vh-4rem)] overflow-y-auto rounded-3xl border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
+              <p className="mb-3 px-2 text-xs font-bold uppercase tracking-[0.25em] text-cyan-300">
+                Categorías
               </p>
+              <nav aria-label="Categorías de calculadoras" className="space-y-1">
+                {calculatorSections.map(([label, href]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    aria-label={`Ir a ${label}`}
+                    className="block rounded-2xl px-4 py-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:bg-cyan-400/10 focus:text-cyan-100 focus:outline-none"
+                  >
+                    {label}
+                  </a>
+                ))}
+              </nav>
             </div>
-            <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
-              Quick access
-            </span>
-          </div>
+          </aside>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Norepinefrina / infusiones", "#infusiones"],
-              ["Na corregido / AG / Osm", "#electrolitos"],
-              ["CKD-EPI / KDIGO ERC", "#renal"],
-              ["PBW / P-F / VMI", "#vmi"],
-              ["Glasgow / SIRS / ASA", "#urgencias"],
-              ["NEWS2 / SOFA", "#uci-scores"],
-              ["TIMI / GRACE / PREVENT", "#cardio-scores"],
-              ["MELD-Na / Child-Pugh", "#gastro-scores"],
-            ].map(([label, href]) => (
-              <a
-                key={href}
-                href={href}
-                className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-4 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-400/20 focus:border-cyan-300/60 focus:outline-none"
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-        </section>
+          <div className="min-w-0 space-y-8 scroll-smooth">
+            <section id="favoritos" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl">
+              <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Favoritos de guardia</h2>
+                  <p className="text-sm text-slate-400">
+                    Accesos rápidos a las calculadoras que más se usan en piso, urgencias y UCI.
+                  </p>
+                </div>
+                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-bold text-cyan-200">
+                  Quick access
+                </span>
+              </div>
 
-        <div className="space-y-8 scroll-smooth">
-          <InfusionCalculator />
-          <ElectrolyteCalculator />
-          <ElectrolyteReplacementCalculator />
-          <RenalAnticoagulationCalculator />
-          <MechanicalVentilationCalculator />
-          <QuickScores />
-          <UrgencyScoresCalculator />
-          <IcuScoresCalculator />
-          <CardiologyScoresCalculator />
-          <GastroScoresCalculator />
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  ["Norepinefrina / infusiones", "#infusiones"],
+                  ["Na corregido / AG / Osm", "#electrolitos"],
+                  ["CKD-EPI / KDIGO ERC", "#renal"],
+                  ["PBW / P-F / VMI", "#vmi"],
+                  ["Glasgow / SIRS / ASA", "#urgencias"],
+                  ["NEWS2 / SOFA", "#uci-scores"],
+                  ["TIMI / GRACE / PREVENT", "#cardio-scores"],
+                  ["MELD-Na / Child-Pugh", "#gastro-scores"],
+                ].map(([label, href]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-4 text-sm font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-400/20 focus:border-cyan-300/60 focus:outline-none"
+                  >
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </section>
+
+            <InfusionCalculator />
+            <ElectrolyteCalculator />
+            <ElectrolyteReplacementCalculator />
+            <RenalAnticoagulationCalculator />
+            <MechanicalVentilationCalculator />
+            <QuickScores />
+            <UrgencyScoresCalculator />
+            <IcuScoresCalculator />
+            <CardiologyScoresCalculator />
+            <GastroScoresCalculator />
+          </div>
         </div>
       </div>
     </main>
