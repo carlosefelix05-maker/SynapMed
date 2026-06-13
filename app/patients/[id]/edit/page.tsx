@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { CURRENT_TEAM_ID } from "@/lib/team";
 
 export default async function EditPatientPage({
   params,
@@ -9,7 +10,6 @@ export default async function EditPatientPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
   const supabase = await createClient();
 
   const { data: patient } = await supabase
@@ -17,6 +17,44 @@ export default async function EditPatientPage({
     .select("*")
     .eq("id", id)
     .single();
+
+  const { data: teamMembers } = await supabase
+    .from("team_members")
+    .select("user_id, role")
+    .eq("team_id", CURRENT_TEAM_ID)
+    .in("role", ["admin", "medico", "residente"]);
+
+  const memberIds = (teamMembers ?? []).map((member) => member.user_id);
+
+  const { data: profiles } = memberIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .in("id", memberIds)
+        .order("full_name", { ascending: true })
+    : { data: [] };
+
+  const roleByUserId = new Map(
+    (teamMembers ?? []).map((member) => [member.user_id, member.role])
+  );
+
+  function getClinicalRole(profile: { id: string; role: string | null }) {
+    if (profile.role === "residente" || profile.role === "interno") {
+      return profile.role;
+    }
+
+    return roleByUserId.get(profile.id) || profile.role || "";
+  }
+
+  const doctors = (profiles ?? []).filter((profile) => {
+    const role = getClinicalRole(profile);
+    return role === "admin" || role === "medico";
+  });
+
+  const residents = (profiles ?? []).filter((profile) => {
+    const role = getClinicalRole(profile);
+    return role === "residente";
+  });
 
   async function updatePatient(formData: FormData) {
     "use server";
@@ -29,10 +67,12 @@ export default async function EditPatientPage({
     const sex = String(formData.get("sex") ?? "").trim();
     const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
+    const assigned_doctor_id =
+      String(formData.get("assigned_doctor_id") ?? "").trim() || null;
+    const assigned_resident_id =
+      String(formData.get("assigned_resident_id") ?? "").trim() || null;
 
-    if (!full_name) {
-      return;
-    }
+    if (!full_name) return;
 
     await supabase
       .from("patients")
@@ -43,6 +83,8 @@ export default async function EditPatientPage({
         sex: sex || null,
         subspecialty: subspecialty || null,
         diagnosis: diagnosis || null,
+        assigned_doctor_id,
+        assigned_resident_id,
       })
       .eq("id", id);
 
@@ -140,6 +182,40 @@ export default async function EditPatientPage({
                 <option value="Neurología">Neurología</option>
                 <option value="Infectología">Infectología</option>
               </select>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Médico responsable</label>
+                <select
+                  name="assigned_doctor_id"
+                  defaultValue={patient.assigned_doctor_id || ""}
+                  className="w-full rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-white outline-none"
+                >
+                  <option value="">Sin asignar</option>
+                  {doctors.map((doctor) => (
+                    <option key={doctor.id} value={doctor.id}>
+                      {doctor.full_name || doctor.email || "Usuario"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">Residente responsable</label>
+                <select
+                  name="assigned_resident_id"
+                  defaultValue={patient.assigned_resident_id || ""}
+                  className="w-full rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-white outline-none"
+                >
+                  <option value="">Sin asignar</option>
+                  {residents.map((resident) => (
+                    <option key={resident.id} value={resident.id}>
+                      {resident.full_name || resident.email || "Usuario"}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div>

@@ -433,11 +433,18 @@ function ElectrolyteReplacementCalculator() {
 }
 
 function RenalAnticoagulationCalculator() {
+  const [renalMode, setRenalMode] = useState<"ckd" | "aki">("ckd");
+
   const [age, setAge] = useState("65");
   const [creatinine, setCreatinine] = useState("1.2");
   const [sex, setSex] = useState("M");
 
-  const result = useMemo(() => {
+  const [baselineCreatinine, setBaselineCreatinine] = useState("1.0");
+  const [currentCreatinine, setCurrentCreatinine] = useState("1.5");
+  const [urineOutput, setUrineOutput] = useState("0.6");
+  const [oliguriaHours, setOliguriaHours] = useState("6");
+
+  const ckdResult = useMemo(() => {
     const years = toNumber(age);
     const cr = toNumber(creatinine);
     const kappa = sex === "F" ? 0.7 : 0.9;
@@ -465,38 +472,123 @@ function RenalAnticoagulationCalculator() {
     return { egfr, kdigo, prophylaxis, therapeutic };
   }, [age, creatinine, sex]);
 
+  const akiResult = useMemo(() => {
+    const baseline = toNumber(baselineCreatinine);
+    const current = toNumber(currentCreatinine);
+    const uresis = toNumber(urineOutput);
+    const hours = toNumber(oliguriaHours);
+
+    const ratio = baseline > 0 ? current / baseline : 0;
+    const absoluteRise = current - baseline;
+
+    let stageByCreatinine = 0;
+    if (current >= 4 || ratio >= 3) stageByCreatinine = 3;
+    else if (ratio >= 2) stageByCreatinine = 2;
+    else if (ratio >= 1.5 || absoluteRise >= 0.3) stageByCreatinine = 1;
+
+    let stageByUrine = 0;
+    if (uresis <= 0 && hours >= 12) stageByUrine = 3;
+    else if (uresis < 0.3 && hours >= 24) stageByUrine = 3;
+    else if (uresis < 0.5 && hours >= 12) stageByUrine = 2;
+    else if (uresis < 0.5 && hours >= 6) stageByUrine = 1;
+
+    const stage = Math.max(stageByCreatinine, stageByUrine);
+    const label = stage === 0 ? "Sin criterios KDIGO" : `KDIGO ${stage}`;
+    const interpretation =
+      stage === 0
+        ? "No cumple criterios con los datos ingresados; vigilar tendencia y contexto clínico."
+        : stage === 1
+          ? "DRA leve. Vigilar creatinina, diuresis, volemia y nefrotóxicos."
+          : stage === 2
+            ? "DRA moderada. Buscar causa, optimizar perfusión renal y vigilancia estrecha."
+            : "DRA severa. Valorar complicaciones, urgencia dialítica e interconsulta a Nefrología.";
+
+    return { ratio, absoluteRise, stage, stageByCreatinine, stageByUrine, label, interpretation };
+  }, [baselineCreatinine, currentCreatinine, urineOutput, oliguriaHours]);
+
   return (
     <section id="renal" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
-      <div className="mb-5">
-        <h2 className="text-2xl font-bold text-white">Función renal y anticoagulación</h2>
-        <p className="mt-1 text-sm text-slate-400">
-          CKD-EPI 2021, clasificación KDIGO de ERC y ajuste rápido de enoxaparina.
-        </p>
-      </div>
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Función renal</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Alterna entre CKD-EPI/KDIGO ERC para función renal crónica y KDIGO DRA para lesión renal aguda.
+          </p>
+        </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Field label="Edad" value={age} onChange={setAge} suffix="años" />
-        <Field label="Creatinina" value={creatinine} onChange={setCreatinine} suffix="mg/dl" />
-
-        <label className="block md:col-span-2">
-          <span className="mb-2 block text-sm font-semibold text-slate-300">Sexo</span>
-          <select
-            value={sex}
-            onChange={(event) => setSex(event.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+        <div className="flex rounded-2xl border border-white/10 bg-[#061527] p-1">
+          <button
+            type="button"
+            onClick={() => setRenalMode("ckd")}
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+              renalMode === "ckd"
+                ? "bg-cyan-400 text-slate-950"
+                : "text-slate-300 hover:bg-white/10"
+            }`}
           >
-            <option value="M">Masculino</option>
-            <option value="F">Femenino</option>
-          </select>
-        </label>
+            CKD-EPI / ACO
+          </button>
+          <button
+            type="button"
+            onClick={() => setRenalMode("aki")}
+            className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
+              renalMode === "aki"
+                ? "bg-cyan-400 text-slate-950"
+                : "text-slate-300 hover:bg-white/10"
+            }`}
+          >
+            KDIGO DRA
+          </button>
+        </div>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-4">
-        <ResultCard title="CKD-EPI / CrCl" value={`${round(result.egfr, 1)} ml/min/1.73m²`} />
-        <ResultCard title="KDIGO ERC" value={result.kdigo} />
-        <ResultCard title="Profilaxis" value={result.prophylaxis} />
-        <ResultCard title="Terapéutica" value={result.therapeutic} />
-      </div>
+      {renalMode === "ckd" ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Field label="Edad" value={age} onChange={setAge} suffix="años" />
+            <Field label="Creatinina" value={creatinine} onChange={setCreatinine} suffix="mg/dl" />
+
+            <label className="block md:col-span-2">
+              <span className="mb-2 block text-sm font-semibold text-slate-300">Sexo</span>
+              <select
+                value={sex}
+                onChange={(event) => setSex(event.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-[#061527] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
+              >
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <ResultCard title="CKD-EPI" value={`${round(ckdResult.egfr, 1)} ml/min/1.73m²`} />
+            <ResultCard title="KDIGO ERC" value={ckdResult.kdigo} />
+            <ResultCard title="Profilaxis" value={ckdResult.prophylaxis} />
+            <ResultCard title="Terapéutica" value={ckdResult.therapeutic} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Field label="Cr basal" value={baselineCreatinine} onChange={setBaselineCreatinine} suffix="mg/dl" />
+            <Field label="Cr actual" value={currentCreatinine} onChange={setCurrentCreatinine} suffix="mg/dl" />
+            <Field label="Diuresis" value={urineOutput} onChange={setUrineOutput} suffix="ml/kg/h" />
+            <Field label="Horas" value={oliguriaHours} onChange={setOliguriaHours} suffix="h" />
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-4">
+            <ResultCard title="Relación Cr" value={`${round(akiResult.ratio, 2)}x`} />
+            <ResultCard title="Aumento absoluto" value={`${round(akiResult.absoluteRise, 2)} mg/dl`} />
+            <ResultCard title="Estadio" value={akiResult.label} />
+            <ResultCard title="Interpretación" value={akiResult.interpretation} />
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+            Creatinina: KDIGO {akiResult.stageByCreatinine}. Diuresis: KDIGO {akiResult.stageByUrine}. Confirmar temporalidad, tendencia, volemia, nefrotóxicos, obstrucción, EGO/sedimento y contexto hemodinámico.
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -882,6 +974,31 @@ export default function CalcPage() {
     ["Cardiología", "#cardio-scores"],
     ["Gastro", "#gastro-scores"],
   ];
+  const [calculatorSearch, setCalculatorSearch] = useState("");
+  const normalizedSearch = calculatorSearch.trim().toLowerCase();
+
+  function showCalculator(...terms: string[]) {
+    if (!normalizedSearch) return true;
+    return terms.some((term) => term.toLowerCase().includes(normalizedSearch));
+  }
+
+  const visibleCalculatorSections = calculatorSections.filter(([label]) =>
+    showCalculator(label)
+  );
+
+  const hasVisibleCalculator = [
+    showCalculator("favoritos guardia quick access accesos rapidos"),
+    showCalculator("infusiones vasoactivos norepinefrina noradrenalina dobutamina dopamina adrenalina sedacion dexmedetomidina fentanilo propofol midazolam"),
+    showCalculator("electrolitos sodio corregido na anion gap osmolaridad glucosa bun albumina"),
+    showCalculator("reposicion electrolitos potasio kcl magnesio mgso4 fosforo kpo4"),
+    showCalculator("renal funcion renal ckd epi kdigo erc dra creatinina diuresis enoxaparina anticoagulacion"),
+    showCalculator("vmi ventilacion mecanica invasiva pbw peso predicho volumen tidal pplat peep fio2 pao2 pf driving pressure sdr a"),
+    showCalculator("escalas curb chads hasbled pesi tromboembolia pulmonar fibrilacion neumonia anticoagulacion"),
+    showCalculator("urgencias glasgow sirs asa calcio corregido"),
+    showCalculator("uci news2 sofa psi apache sepsis neumonia cuidados intensivos"),
+    showCalculator("cardiologia killip shock index rcri lee chads timi grace prevent riesgo cardiovascular"),
+    showCalculator("gastro meld meld na child pugh cirrosis hepatopatia sangrado hepatico"),
+  ].some(Boolean);
   return (
     <main className="min-h-screen bg-[#071A2F] p-6 text-white md:p-10">
       <div className="mx-auto max-w-7xl">
@@ -904,9 +1021,22 @@ export default function CalcPage() {
               Volver al dashboard
             </Link>
           </div>
-
+          <div className="mt-6 rounded-2xl border border-white/10 bg-[#061527] p-3">
+            <label className="block">
+              <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
+                Buscar calculadora
+              </span>
+              <input
+                type="search"
+                value={calculatorSearch}
+                onChange={(event) => setCalculatorSearch(event.target.value)}
+                placeholder="Buscar: VMI, norepinefrina, KDIGO, PESI, potasio..."
+                className="w-full rounded-2xl border border-white/10 bg-[#071A2F] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300/60"
+              />
+            </label>
+          </div>
       <nav aria-label="Navegación rápida de calculadoras" className="sticky top-3 z-20 mt-6 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#061527]/95 p-2 shadow-xl backdrop-blur lg:hidden">
-        {calculatorSections.map(([label, href]) => (
+        {visibleCalculatorSections.map(([label, href]) => (
           <a
             key={href}
             href={href}
@@ -929,7 +1059,7 @@ export default function CalcPage() {
                 Categorías
               </p>
               <nav aria-label="Categorías de calculadoras" className="space-y-1">
-                {calculatorSections.map(([label, href]) => (
+                {visibleCalculatorSections.map(([label, href]) => (
                   <a
                     key={href}
                     href={href}
@@ -944,6 +1074,15 @@ export default function CalcPage() {
           </aside>
 
           <div className="min-w-0 space-y-8 scroll-smooth">
+            {!hasVisibleCalculator ? (
+              <section className="rounded-3xl border border-amber-300/20 bg-amber-400/10 p-6 text-amber-100">
+                <h2 className="text-xl font-bold">Sin resultados</h2>
+                <p className="mt-2 text-sm leading-6">
+                  No encontré calculadoras con ese término. Prueba con VMI, KDIGO, electrolitos, PESI, norepinefrina, NEWS2, SOFA, TIMI o MELD.
+                </p>
+              </section>
+            ) : null}
+            {showCalculator("favoritos guardia quick access accesos rapidos") ? (
             <section id="favoritos" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-5 shadow-2xl">
               <div className="mb-4 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -978,17 +1117,17 @@ export default function CalcPage() {
                 ))}
               </div>
             </section>
-
-            <InfusionCalculator />
-            <ElectrolyteCalculator />
-            <ElectrolyteReplacementCalculator />
-            <RenalAnticoagulationCalculator />
-            <MechanicalVentilationCalculator />
-            <QuickScores />
-            <UrgencyScoresCalculator />
-            <IcuScoresCalculator />
-            <CardiologyScoresCalculator />
-            <GastroScoresCalculator />
+            ) : null}
+            {showCalculator("infusiones vasoactivos norepinefrina noradrenalina dobutamina dopamina adrenalina sedacion dexmedetomidina fentanilo propofol midazolam") ? <InfusionCalculator /> : null}
+            {showCalculator("electrolitos sodio corregido na anion gap osmolaridad glucosa bun albumina") ? <ElectrolyteCalculator /> : null}
+            {showCalculator("reposicion electrolitos potasio kcl magnesio mgso4 fosforo kpo4") ? <ElectrolyteReplacementCalculator /> : null}
+            {showCalculator("renal funcion renal ckd epi kdigo erc dra creatinina diuresis enoxaparina anticoagulacion") ? <RenalAnticoagulationCalculator /> : null}
+            {showCalculator("vmi ventilacion mecanica invasiva pbw peso predicho volumen tidal pplat peep fio2 pao2 pf driving pressure sdr a") ? <MechanicalVentilationCalculator /> : null}
+            {showCalculator("escalas curb chads hasbled pesi tromboembolia pulmonar fibrilacion neumonia anticoagulacion") ? <QuickScores /> : null}
+            {showCalculator("urgencias glasgow sirs asa calcio corregido") ? <UrgencyScoresCalculator /> : null}
+            {showCalculator("uci news2 sofa psi apache sepsis neumonia cuidados intensivos") ? <IcuScoresCalculator /> : null}
+            {showCalculator("cardiologia killip shock index rcri lee chads timi grace prevent riesgo cardiovascular") ? <CardiologyScoresCalculator /> : null}
+            {showCalculator("gastro meld meld na child pugh cirrosis hepatopatia sangrado hepatico") ? <GastroScoresCalculator /> : null}
           </div>
         </div>
       </div>

@@ -4,7 +4,47 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 
-export default function NewPatientPage() {
+export default async function NewPatientPage() {
+  const supabase = await createClient();
+
+  const { data: teamMembers } = await supabase
+    .from("team_members")
+    .select("user_id, role")
+    .eq("team_id", CURRENT_TEAM_ID)
+    .in("role", ["admin", "medico", "residente"]);
+
+  const memberIds = (teamMembers ?? []).map((member) => member.user_id);
+
+  const { data: profiles } = memberIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .in("id", memberIds)
+        .order("full_name", { ascending: true })
+    : { data: [] };
+
+  const roleByUserId = new Map(
+  (teamMembers ?? []).map((member) => [member.user_id, member.role])
+);
+
+function getClinicalRole(profile: { id: string; role: string | null }) {
+  if (profile.role === "residente" || profile.role === "interno") {
+    return profile.role;
+  }
+
+  return roleByUserId.get(profile.id) || profile.role || "";
+}
+
+const doctors = (profiles ?? []).filter((profile) => {
+  const role = getClinicalRole(profile);
+  return role === "admin" || role === "medico";
+});
+
+const residents = (profiles ?? []).filter((profile) => {
+  const role = getClinicalRole(profile);
+  return role === "residente";
+});
+
   async function createPatient(formData: FormData) {
     "use server";
 
@@ -17,6 +57,11 @@ export default function NewPatientPage() {
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
     const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const priority = String(formData.get("priority") ?? "").trim();
+    const assigned_doctor_id =
+      String(formData.get("assigned_doctor_id") ?? "").trim() || null;
+
+    const assigned_resident_id =
+      String(formData.get("assigned_resident_id") ?? "").trim() || null;
 
     if (!full_name || !bed) return;
 
@@ -29,6 +74,8 @@ export default function NewPatientPage() {
       diagnosis: diagnosis || null,
       subspecialty: subspecialty || null,
       priority: priority || "Estable",
+      assigned_doctor_id,
+      assigned_resident_id,
     });
 
     revalidatePath("/");
@@ -87,6 +134,32 @@ export default function NewPatientPage() {
                 <option value="Estable">Estable</option>
                 <option value="Alta">Alta</option>
                 <option value="Crítico">Crítico</option>
+              </select>
+
+              <select
+                name="assigned_doctor_id"
+                defaultValue=""
+                className="rounded-xl bg-[#071A2F] px-4 py-3 text-white"
+              >
+                <option value="">Médico responsable</option>
+                {doctors.map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.full_name || doctor.email || "Usuario"}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                name="assigned_resident_id"
+                defaultValue=""
+                className="rounded-xl bg-[#071A2F] px-4 py-3 text-white"
+              >
+                <option value="">Residente responsable</option>
+                {residents.map((resident) => (
+                  <option key={resident.id} value={resident.id}>
+                    {resident.full_name || resident.email || "Usuario"}
+                  </option>
+                ))}
               </select>
             </div>
 

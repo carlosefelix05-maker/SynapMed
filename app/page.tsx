@@ -15,6 +15,8 @@ type Patient = {
   bed: string | null;
   priority: string | null;
   subspecialty: string | null;
+  assigned_doctor_id: string | null;
+  assigned_resident_id: string | null;
 };
 
 type Lab = {
@@ -117,6 +119,37 @@ export default async function Home({
   }
 
   const list = (patients ?? []) as Patient[];
+
+  const assignedUserIds = Array.from(
+    new Set(
+      list
+        .flatMap((patient) => [patient.assigned_doctor_id, patient.assigned_resident_id])
+        .filter(Boolean)
+    )
+  ) as string[];
+
+  const { data: assignedProfiles } = assignedUserIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .in("id", assignedUserIds)
+    : { data: [] };
+
+  const assignedProfileMap = new Map(
+    ((assignedProfiles ?? []) as Array<{
+      id: string;
+      full_name: string | null;
+      email: string | null;
+      role: string | null;
+    }>).map((profile) => [profile.id, profile])
+  );
+
+  function assignedName(userId?: string | null) {
+    if (!userId) return "Sin asignar";
+
+    const profile = assignedProfileMap.get(userId);
+    return profile?.full_name || profile?.email || "Sin asignar";
+  }
   const labsList = (labs ?? []) as Lab[];
   const notesList = (notes ?? []) as { patient_id: string; created_at: string }[];
   const roundLogsList = (roundLogs ?? []) as { patient_id: string; completed_at: string }[];
@@ -800,11 +833,12 @@ export default async function Home({
             <h3 className="mb-4 text-xl font-bold">Lista de pacientes</h3>
 
             <div className="overflow-hidden rounded-2xl border border-white/10">
-              <div className="grid grid-cols-7 bg-white/10 px-4 py-3 text-sm text-slate-300">
+              <div className="grid grid-cols-8 bg-white/10 px-4 py-3 text-sm text-slate-300">
                 <span>Cama</span>
                 <span>Paciente</span>
                 <span>Edad / Sexo</span>
                 <span>Diagnóstico</span>
+                <span>Responsables</span>
                 <span>Prioridad</span>
                 <span>Labs</span>
                 <span>Pase</span>
@@ -831,7 +865,7 @@ export default async function Home({
                       <a
                         href={`/patients/${patient.id}${subspecialtyQuery}`}
                         key={patient.id}
-                        className={`grid grid-cols-7 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
+                        className={`grid grid-cols-8 ${patientRowClass(latestLabsByPatient.get(patient.id))}`}
                       >
                         <span className="font-semibold">{patient.bed}</span>
                         <span>{patient.full_name}</span>
@@ -839,6 +873,14 @@ export default async function Home({
                           {patient.age} · {patient.sex}
                         </span>
                         <span className="text-slate-300">{patient.diagnosis}</span>
+                        <span className="text-xs leading-5 text-slate-300">
+                          <span className="block">
+                            Ads: <span className="text-slate-100">{assignedName(patient.assigned_doctor_id)}</span>
+                          </span>
+                          <span className="block">
+                            R: <span className="text-slate-100">{assignedName(patient.assigned_resident_id)}</span>
+                          </span>
+                        </span>
                         <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
                         <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
                           {formatLabs(latestLabsByPatient.get(patient.id))}
