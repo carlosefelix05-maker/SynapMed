@@ -15,7 +15,7 @@ type Patient = {
   bed: string | null;
   priority: string | null;
   subspecialty: string | null;
-  assigned_doctor_id: string | null;
+  attending_id: string | null;
   assigned_resident_id: string | null;
 };
 
@@ -35,13 +35,20 @@ type Lab = {
   created_at: string;
 };
 
+type Attending = {
+  id: string;
+  full_name: string;
+  specialty: string | null;
+};
+
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ subspecialty?: string }>;
+  searchParams?: Promise<{ subspecialty?: string; view?: string; attending?: string }>;
 }) {
-  const params = await searchParams;
   const supabase = await createClient();
+  const params = await searchParams;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -75,15 +82,31 @@ export default async function Home({
 
   const isAdmin = currentMembership?.role === "admin";
   const selectedSubspecialty = params?.subspecialty && params.subspecialty !== "Todas" ? params.subspecialty : "Todas";
-  const subspecialtyQuery =
-    selectedSubspecialty !== "Todas"
-      ? `?subspecialty=${encodeURIComponent(selectedSubspecialty)}`
-      : "";
+  const selectedAttending = params?.attending && params.attending !== "Todos" ? params.attending : "Todos";
+  const selectedView = params?.view === "mine" ? "mine" : "all";
+
+const queryParts = [
+  selectedSubspecialty !== "Todas"
+    ? `subspecialty=${encodeURIComponent(selectedSubspecialty)}`
+    : null,
+  selectedAttending !== "Todos"
+    ? `attending=${encodeURIComponent(selectedAttending)}`
+    : null,
+  selectedView === "mine" ? "view=mine" : null,
+].filter(Boolean);
+
+const subspecialtyQuery = queryParts.length ? `?${queryParts.join("&")}` : "";
+
   const { data: patients, error } = await supabase
     .from("patients")
     .select("*")
     .eq("team_id", CURRENT_TEAM_ID)
     .order("bed", { ascending: true });
+
+  const { data: attendings } = await supabase
+    .from("attendings")
+    .select("id, full_name, specialty")
+    .eq("team_id", CURRENT_TEAM_ID);
 
   const { data: labs } = await supabase
     .from("labs")
@@ -118,14 +141,15 @@ export default async function Home({
     );
   }
 
-  const list = (patients ?? []) as Patient[];
+  const allPatients = (patients ?? []) as Patient[];
+
+const list =
+  selectedView === "mine" && user
+    ? allPatients.filter((patient) => patient.assigned_resident_id === user.id)
+    : allPatients;
 
   const assignedUserIds = Array.from(
-    new Set(
-      list
-        .flatMap((patient) => [patient.assigned_doctor_id, patient.assigned_resident_id])
-        .filter(Boolean)
-    )
+    new Set(list.map((patient) => patient.assigned_resident_id).filter(Boolean))
   ) as string[];
 
   const { data: assignedProfiles } = assignedUserIds.length
@@ -144,11 +168,22 @@ export default async function Home({
     }>).map((profile) => [profile.id, profile])
   );
 
+  const attendingMap = new Map(
+    ((attendings ?? []) as Attending[]).map((attending) => [attending.id, attending])
+  );
+
   function assignedName(userId?: string | null) {
     if (!userId) return "Sin asignar";
 
     const profile = assignedProfileMap.get(userId);
     return profile?.full_name || profile?.email || "Sin asignar";
+  }
+
+  function attendingName(attendingId?: string | null) {
+    if (!attendingId) return "Sin asignar";
+
+    const attending = attendingMap.get(attendingId);
+    return attending?.full_name || "Sin asignar";
   }
   const labsList = (labs ?? []) as Lab[];
   const notesList = (notes ?? []) as { patient_id: string; created_at: string }[];
@@ -309,12 +344,16 @@ export default async function Home({
     };
   });
 
-  const currentPassSummaries =
-    selectedSubspecialty === "Todas"
-      ? patientSummaries
-      : patientSummaries.filter(
-          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
-        );
+  const currentPassSummaries = patientSummaries.filter((item) => {
+    const matchesSubspecialty =
+      selectedSubspecialty === "Todas" ||
+      (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty;
+
+    const matchesAttending =
+      selectedAttending === "Todos" || item.patient.attending_id === selectedAttending;
+
+    return matchesSubspecialty && matchesAttending;
+  });
 
   const criticalCount = currentPassSummaries.filter((item) => item.priority === "Crítico").length;
   const highPriorityCount = currentPassSummaries.filter((item) => item.priority === "Alta").length;
@@ -329,12 +368,16 @@ export default async function Home({
     (item) => !patientsWithRoundCompletedToday.has(item.patient.id)
   );
 
-  const visiblePendingPatientSummaries =
-    selectedSubspecialty === "Todas"
-      ? pendingPatientSummaries
-      : pendingPatientSummaries.filter(
-          (item) => (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
-        );
+  const visiblePendingPatientSummaries = pendingPatientSummaries.filter((item) => {
+    const matchesSubspecialty =
+      selectedSubspecialty === "Todas" ||
+      (item.patient.subspecialty || "Medicina Interna") === selectedSubspecialty;
+
+    const matchesAttending =
+      selectedAttending === "Todos" || item.patient.attending_id === selectedAttending;
+
+    return matchesSubspecialty && matchesAttending;
+  });
 
   const patientsBySubspecialty = visiblePendingPatientSummaries.reduce(
     (groups, item) => {
@@ -395,12 +438,16 @@ export default async function Home({
       patient: Patient;
     }>;
 
-  const visiblePendingTasks =
-    selectedSubspecialty === "Todas"
-      ? pendingTasksByPatient
-      : pendingTasksByPatient.filter(
-          (task) => (task.patient.subspecialty || "Medicina Interna") === selectedSubspecialty
-        );
+  const visiblePendingTasks = pendingTasksByPatient.filter((task) => {
+    const matchesSubspecialty =
+      selectedSubspecialty === "Todas" ||
+      (task.patient.subspecialty || "Medicina Interna") === selectedSubspecialty;
+
+    const matchesAttending =
+      selectedAttending === "Todos" || task.patient.attending_id === selectedAttending;
+
+    return matchesSubspecialty && matchesAttending;
+  });
 
   const pendingTasksGrouped = visiblePendingTasks.reduce(
     (groups, task) => {
@@ -487,6 +534,7 @@ export default async function Home({
           {[
   { label: "Synapse", href: "/" },
   { label: "Census", href: "/" },
+  { label: "Mis pacientes", href: "/?view=mine" },
   { label: "Rounds", href: "/" },
   { label: "Patients", href: "/patients/new" },
   { label: "Notes", href: "/" },
@@ -498,7 +546,8 @@ export default async function Home({
     key={item.label}
     href={item.href}
     className={`mb-2 w-full rounded-xl px-4 py-3 text-left text-sm ${
-      item.label === "Census"
+      (item.label === "Census" && selectedView === "all") ||
+      (item.label === "Mis pacientes" && selectedView === "mine")
         ? "bg-cyan-400 font-semibold text-slate-950"
         : "text-slate-300 hover:bg-white/10"
     }`}
@@ -546,7 +595,7 @@ export default async function Home({
               <div>
                 <h3 className="text-2xl font-bold">📊 Census</h3>
                 <p className="text-sm text-slate-400">
-                  Vista global administrativa del servicio
+                  {selectedView === "mine" ? "Pacientes asignados a tu usuario" : "Vista global administrativa del servicio"}
                 </p>
               </div>
 
@@ -555,6 +604,12 @@ export default async function Home({
                 className="rounded-xl bg-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-300"
               >
                 + Nuevo paciente
+              </Link>
+              <Link
+                href={selectedView === "mine" ? "/" : "/?view=mine"}
+                className="rounded-xl bg-white/10 px-5 py-3 text-sm font-semibold text-slate-200 hover:bg-white/20"
+              >
+                {selectedView === "mine" ? "Ver todo el censo" : "Mis pacientes"}
               </Link>
             </div>
 
@@ -590,7 +645,7 @@ export default async function Home({
               {censusBySubspecialty.map((item) => (
                 <Link
                   key={item.subspecialty}
-                  href={`/?subspecialty=${encodeURIComponent(item.subspecialty)}`}
+                  href={`/?subspecialty=${encodeURIComponent(item.subspecialty)}${selectedView === "mine" ? "&view=mine" : ""}`}
                   className="rounded-2xl border border-white/10 bg-[#071A2F] p-4 transition hover:bg-white/10"
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -702,7 +757,7 @@ export default async function Home({
               <div>
                 <h3 className="text-2xl font-bold">🏥 Rounds</h3>
                 <p className="text-slate-300">
-                  {selectedSubspecialty === "Todas" ? "Medicina Interna" : selectedSubspecialty} · Pacientes desde Supabase
+                  {selectedSubspecialty === "Todas" ? "Medicina Interna" : selectedSubspecialty} · {selectedAttending === "Todos" ? "Todos los adscritos" : attendingName(selectedAttending)}
                 </p>
               </div>
 
@@ -735,6 +790,21 @@ export default async function Home({
                 ))}
               </select>
 
+              <select
+                name="attending"
+                defaultValue={selectedAttending}
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-4 py-3 text-sm text-white outline-none"
+              >
+                <option value="Todos">Todos los adscritos</option>
+                {((attendings ?? []) as Attending[]).map((attending) => (
+                  <option key={attending.id} value={attending.id}>
+                    {attending.full_name} · {attending.specialty || "Medicina Interna"}
+                  </option>
+                ))}
+              </select>
+
+              {selectedView === "mine" ? <input type="hidden" name="view" value="mine" /> : null}
+
               <button
                 type="submit"
                 className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
@@ -742,9 +812,9 @@ export default async function Home({
                 Seleccionar pase
               </button>
 
-              {selectedSubspecialty !== "Todas" ? (
+              {selectedSubspecialty !== "Todas" || selectedAttending !== "Todos" ? (
                 <Link
-                  href="/"
+                  href={selectedView === "mine" ? "/?view=mine" : "/"}
                   className="rounded-xl bg-white/10 px-5 py-3 text-sm text-slate-300 hover:bg-white/20"
                 >
                   Ver todas
@@ -875,7 +945,7 @@ export default async function Home({
                         <span className="text-slate-300">{patient.diagnosis}</span>
                         <span className="text-xs leading-5 text-slate-300">
                           <span className="block">
-                            Ads: <span className="text-slate-100">{assignedName(patient.assigned_doctor_id)}</span>
+                            Ads: <span className="text-slate-100">{attendingName(patient.attending_id)}</span>
                           </span>
                           <span className="block">
                             R: <span className="text-slate-100">{assignedName(patient.assigned_resident_id)}</span>

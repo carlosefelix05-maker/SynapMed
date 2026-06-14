@@ -3,15 +3,24 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import NewPatientForm from "./NewPatientForm";
 
 export default async function NewPatientPage() {
   const supabase = await createClient();
+
+  const { data: attendings } = await supabase
+    .from("attendings")
+    .select("id, full_name, specialty")
+    .eq("team_id", CURRENT_TEAM_ID)
+    .eq("active", true)
+    .order("specialty", { ascending: true })
+    .order("full_name", { ascending: true });
 
   const { data: teamMembers } = await supabase
     .from("team_members")
     .select("user_id, role")
     .eq("team_id", CURRENT_TEAM_ID)
-    .in("role", ["admin", "medico", "residente"]);
+    .in("role", ["admin", "medico", "residente", "interno"]);
 
   const memberIds = (teamMembers ?? []).map((member) => member.user_id);
 
@@ -24,26 +33,21 @@ export default async function NewPatientPage() {
     : { data: [] };
 
   const roleByUserId = new Map(
-  (teamMembers ?? []).map((member) => [member.user_id, member.role])
-);
+    (teamMembers ?? []).map((member) => [member.user_id, member.role])
+  );
 
-function getClinicalRole(profile: { id: string; role: string | null }) {
-  if (profile.role === "residente" || profile.role === "interno") {
-    return profile.role;
+  function getClinicalRole(profile: { id: string; role: string | null }) {
+    if (profile.role === "residente" || profile.role === "interno") {
+      return profile.role;
+    }
+
+    return roleByUserId.get(profile.id) || profile.role || "";
   }
 
-  return roleByUserId.get(profile.id) || profile.role || "";
-}
-
-const doctors = (profiles ?? []).filter((profile) => {
-  const role = getClinicalRole(profile);
-  return role === "admin" || role === "medico";
-});
-
-const residents = (profiles ?? []).filter((profile) => {
-  const role = getClinicalRole(profile);
-  return role === "residente";
-});
+  const residents = (profiles ?? []).filter((profile) => {
+    const role = getClinicalRole(profile);
+    return role === "residente";
+  });
 
   async function createPatient(formData: FormData) {
     "use server";
@@ -57,9 +61,7 @@ const residents = (profiles ?? []).filter((profile) => {
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
     const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const priority = String(formData.get("priority") ?? "").trim();
-    const assigned_doctor_id =
-      String(formData.get("assigned_doctor_id") ?? "").trim() || null;
-
+    const attending_id = String(formData.get("attending_id") ?? "").trim() || null;
     const assigned_resident_id =
       String(formData.get("assigned_resident_id") ?? "").trim() || null;
 
@@ -74,7 +76,7 @@ const residents = (profiles ?? []).filter((profile) => {
       diagnosis: diagnosis || null,
       subspecialty: subspecialty || null,
       priority: priority || "Estable",
-      assigned_doctor_id,
+      attending_id,
       assigned_resident_id,
     });
 
@@ -98,81 +100,11 @@ const residents = (profiles ?? []).filter((profile) => {
             </p>
           </div>
 
-          <form action={createPatient} className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <input name="bed" placeholder="Cama" required className="rounded-xl bg-[#071A2F] px-4 py-3 text-white" />
-              <input name="full_name" placeholder="Nombre completo" required className="rounded-xl bg-[#071A2F] px-4 py-3 text-white" />
-              <input name="age" type="number" placeholder="Edad" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white" />
-
-              <select name="sex" defaultValue="" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white">
-                <option value="" disabled>Sexo</option>
-                <option value="Masculino">Masculino</option>
-                <option value="Femenino">Femenino</option>
-              </select>
-
-              <textarea
-                name="diagnosis"
-                rows={4}
-                placeholder="Diagnóstico principal"
-                className="rounded-xl bg-[#071A2F] px-4 py-3 text-white md:col-span-2"
-              />
-
-              <select name="subspecialty" defaultValue="Medicina Interna" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white">
-                <option value="Medicina Interna">Medicina Interna</option>
-                <option value="Cardiología">Cardiología</option>
-                <option value="Nefrología">Nefrología</option>
-                <option value="Neumología">Neumología</option>
-                <option value="Gastroenterología">Gastroenterología</option>
-                <option value="Endocrinología">Endocrinología</option>
-                <option value="Hematología">Hematología</option>
-                <option value="Terapia Intensiva">Terapia Intensiva</option>
-                <option value="Neurología">Neurología</option>
-                <option value="Infectología">Infectología</option>
-              </select>
-
-              <select name="priority" defaultValue="Estable" className="rounded-xl bg-[#071A2F] px-4 py-3 text-white">
-                <option value="Estable">Estable</option>
-                <option value="Alta">Alta</option>
-                <option value="Crítico">Crítico</option>
-              </select>
-
-              <select
-                name="assigned_doctor_id"
-                defaultValue=""
-                className="rounded-xl bg-[#071A2F] px-4 py-3 text-white"
-              >
-                <option value="">Médico responsable</option>
-                {doctors.map((doctor) => (
-                  <option key={doctor.id} value={doctor.id}>
-                    {doctor.full_name || doctor.email || "Usuario"}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                name="assigned_resident_id"
-                defaultValue=""
-                className="rounded-xl bg-[#071A2F] px-4 py-3 text-white"
-              >
-                <option value="">Residente responsable</option>
-                {residents.map((resident) => (
-                  <option key={resident.id} value={resident.id}>
-                    {resident.full_name || resident.email || "Usuario"}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button type="submit" className="rounded-xl bg-emerald-400 px-6 py-3 font-semibold text-slate-950">
-                Guardar paciente
-              </button>
-
-              <Link href="/" className="rounded-xl bg-white/10 px-6 py-3 font-semibold text-slate-200">
-                Cancelar
-              </Link>
-            </div>
-          </form>
+          <NewPatientForm
+            createPatient={createPatient}
+            attendings={attendings ?? []}
+            residents={residents ?? []}
+          />
         </section>
       </div>
     </main>

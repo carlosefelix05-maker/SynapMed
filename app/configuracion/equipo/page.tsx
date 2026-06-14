@@ -16,6 +16,13 @@ type Profile = {
   role: string | null;
 };
 
+type Attending = {
+  id: string;
+  full_name: string;
+  specialty: string | null;
+  active: boolean | null;
+};
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -46,7 +53,7 @@ export default async function TeamSettingsPage() {
       throw new Error("Escribe el correo del usuario.");
     }
 
-    const allowedRoles = ["admin", "medico", "residente", "interno"];
+    const allowedRoles = ["admin", "adscrito", "medico", "residente", "interno"];
     const finalRole = allowedRoles.includes(role) ? role : "medico";
 
     const supabase = await createClient();
@@ -74,7 +81,7 @@ export default async function TeamSettingsPage() {
       throw new Error("No se encontró el usuario a editar.");
     }
 
-    const allowedRoles = ["admin", "medico", "residente", "interno"];
+    const allowedRoles = ["admin", "adscrito", "medico", "residente", "interno"];
     const finalRole = allowedRoles.includes(role) ? role : "medico";
 
     const supabase = await createClient();
@@ -104,6 +111,87 @@ export default async function TeamSettingsPage() {
     const { error } = await supabase.rpc("remove_team_member", {
       target_user_id: userId,
     });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
+
+  async function addAttending(formData: FormData) {
+    "use server";
+
+    const fullName = String(formData.get("full_name") || "").trim();
+    const specialty = String(formData.get("specialty") || "Medicina Interna").trim();
+
+    if (!fullName) {
+      throw new Error("Escribe el nombre del adscrito.");
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase.from("attendings").insert({
+      team_id: CURRENT_TEAM_ID,
+      full_name: fullName,
+      specialty: specialty || "Medicina Interna",
+      active: true,
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
+
+  async function updateAttending(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id") || "").trim();
+    const fullName = String(formData.get("full_name") || "").trim();
+    const specialty = String(formData.get("specialty") || "Medicina Interna").trim();
+    const active = String(formData.get("active") || "false") === "true";
+
+    if (!id || !fullName) {
+      throw new Error("Faltan datos del adscrito.");
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("attendings")
+      .update({
+        full_name: fullName,
+        specialty: specialty || "Medicina Interna",
+        active,
+      })
+      .eq("team_id", CURRENT_TEAM_ID)
+      .eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    revalidatePath("/configuracion/equipo");
+    revalidatePath("/");
+  }
+
+  async function deactivateAttending(formData: FormData) {
+    "use server";
+
+    const id = String(formData.get("id") || "").trim();
+
+    if (!id) {
+      throw new Error("No se encontró el adscrito.");
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("attendings")
+      .update({ active: false })
+      .eq("team_id", CURRENT_TEAM_ID)
+      .eq("id", id);
 
     if (error) {
       throw new Error(error.message);
@@ -155,6 +243,15 @@ export default async function TeamSettingsPage() {
     ((profiles ?? []) as Profile[]).map((profile) => [profile.id, profile])
   );
 
+  const { data: attendings } = await supabase
+    .from("attendings")
+    .select("id, full_name, specialty, active")
+    .eq("team_id", CURRENT_TEAM_ID)
+    .order("specialty", { ascending: true })
+    .order("full_name", { ascending: true });
+
+  const attendingList = (attendings ?? []) as Attending[];
+
   return (
     <main className="min-h-screen bg-[#061325] p-6 text-white">
       <div className="mx-auto max-w-5xl">
@@ -178,11 +275,125 @@ export default async function TeamSettingsPage() {
           </p>
         </section>
 
+        <section className="mt-6 rounded-3xl border border-emerald-300/20 bg-emerald-400/10 p-6 shadow-2xl">
+          <div className="mb-5">
+            <h2 className="text-xl font-bold text-white">Adscritos del servicio</h2>
+            <p className="mt-1 text-sm text-slate-300">
+              Catálogo de adscritos por especialidad. No necesitan cuenta de usuario para asignarse a pacientes.
+            </p>
+          </div>
+
+          <form action={addAttending} className="grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Nombre del adscrito
+              </label>
+              <input
+                name="full_name"
+                required
+                placeholder="Dr. Nombre Apellido"
+                className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/60"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-200">
+                Especialidad
+              </label>
+              <input
+                name="specialty"
+                defaultValue="Medicina Interna"
+                className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-emerald-300/60"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-2xl bg-emerald-400 px-5 py-3 text-sm font-bold text-slate-950 hover:bg-emerald-300"
+            >
+              Agregar adscrito
+            </button>
+          </form>
+
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white/10">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-white/10 text-slate-300">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Nombre</th>
+                  <th className="px-4 py-3 font-semibold">Especialidad</th>
+                  <th className="px-4 py-3 font-semibold">Estado</th>
+                  <th className="px-4 py-3 font-semibold">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attendingList.map((attending) => (
+                  <tr key={attending.id} className="border-t border-white/10">
+                    <td className="px-4 py-3">
+                      <form action={updateAttending} className="grid gap-3 md:grid-cols-[1fr_220px_140px_auto] md:items-center">
+                        <input type="hidden" name="id" value={attending.id} />
+                        <input
+                          name="full_name"
+                          defaultValue={attending.full_name}
+                          className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-2 text-sm text-white outline-none focus:border-emerald-300/60"
+                        />
+                        <input
+                          name="specialty"
+                          defaultValue={attending.specialty || "Medicina Interna"}
+                          className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-2 text-sm text-white outline-none focus:border-emerald-300/60"
+                        />
+                        <select
+                          name="active"
+                          defaultValue={attending.active === false ? "false" : "true"}
+                          className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-2 text-sm text-white outline-none focus:border-emerald-300/60"
+                        >
+                          <option value="true">Activo</option>
+                          <option value="false">Inactivo</option>
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-2xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/20"
+                        >
+                          Guardar
+                        </button>
+                      </form>
+                    </td>
+                    <td className="px-4 py-3 text-slate-300">{attending.specialty || "Medicina Interna"}</td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${attending.active === false ? "bg-slate-400/10 text-slate-300" : "bg-emerald-400/10 text-emerald-300"}`}>
+                        {attending.active === false ? "Inactivo" : "Activo"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <form action={deactivateAttending}>
+                        <input type="hidden" name="id" value={attending.id} />
+                        <button
+                          type="submit"
+                          className="rounded-2xl border border-red-300/30 bg-red-400/10 px-4 py-2 text-sm font-bold text-red-200 hover:bg-red-400/20"
+                        >
+                          Desactivar
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+
+                {attendingList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                      No hay adscritos registrados todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         <section className="mt-6 rounded-3xl border border-cyan-300/20 bg-cyan-400/10 p-6 shadow-2xl">
           <div className="mb-5">
             <h2 className="text-xl font-bold text-white">Agregar miembro</h2>
             <p className="mt-1 text-sm text-slate-300">
-              El usuario debe tener una cuenta creada en SynapMed. Escríbele el correo y asigna su rol.
+              El usuario debe tener una cuenta creada en SynapMed. Puedes asignarlo como adscrito, médico, residente, interno o administrador.
             </p>
           </div>
 
@@ -209,6 +420,7 @@ export default async function TeamSettingsPage() {
                 defaultValue="medico"
                 className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-3 text-sm text-white outline-none focus:border-cyan-300/60"
               >
+                <option value="adscrito">Adscrito</option>
                 <option value="medico">Médico</option>
                 <option value="residente">Residente</option>
                 <option value="interno">Interno</option>
@@ -286,6 +498,7 @@ export default async function TeamSettingsPage() {
                               defaultValue={member.role || profile?.role || "medico"}
                               className="w-full rounded-2xl border border-white/10 bg-[#061325] px-4 py-2 text-sm text-white outline-none focus:border-cyan-300/60"
                             >
+                              <option value="adscrito">Adscrito</option>
                               <option value="medico">Médico</option>
                               <option value="residente">Residente</option>
                               <option value="interno">Interno</option>
