@@ -16,38 +16,21 @@ export default async function NewPatientPage() {
     .order("specialty", { ascending: true })
     .order("full_name", { ascending: true });
 
-  const { data: teamMembers } = await supabase
+  const { data: residentMembers } = await supabase
     .from("team_members")
     .select("user_id, role")
     .eq("team_id", CURRENT_TEAM_ID)
-    .in("role", ["admin", "medico", "residente", "interno"]);
+    .eq("role", "residente");
 
-  const memberIds = (teamMembers ?? []).map((member) => member.user_id);
+  const residentIds = (residentMembers ?? []).map((member) => member.user_id);
 
-  const { data: profiles } = memberIds.length
+  const { data: residents } = residentIds.length
     ? await supabase
         .from("profiles")
         .select("id, full_name, email, role")
-        .in("id", memberIds)
+        .in("id", residentIds)
         .order("full_name", { ascending: true })
     : { data: [] };
-
-  const roleByUserId = new Map(
-    (teamMembers ?? []).map((member) => [member.user_id, member.role])
-  );
-
-  function getClinicalRole(profile: { id: string; role: string | null }) {
-    if (profile.role === "residente" || profile.role === "interno") {
-      return profile.role;
-    }
-
-    return roleByUserId.get(profile.id) || profile.role || "";
-  }
-
-  const residents = (profiles ?? []).filter((profile) => {
-    const role = getClinicalRole(profile);
-    return role === "residente";
-  });
 
   async function createPatient(formData: FormData) {
     "use server";
