@@ -25,7 +25,7 @@ export default async function NewNotePage({
     .select("*")
     .eq("patient_id", id)
     .eq("team_id", CURRENT_TEAM_ID)
-    .order("created_at", { ascending: false })
+    .order("sampled_at", { ascending: false })
     .limit(1)
     .single();
 

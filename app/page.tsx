@@ -112,7 +112,7 @@ const subspecialtyQuery = queryParts.length ? `?${queryParts.join("&")}` : "";
     .from("labs")
     .select("*")
     .eq("team_id", CURRENT_TEAM_ID)
-    .order("created_at", { ascending: false });
+    .order("sampled_at", { ascending: false });
 
   const { data: notes } = await supabase
     .from("notes")

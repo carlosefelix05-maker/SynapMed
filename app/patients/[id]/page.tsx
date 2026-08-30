@@ -7,7 +7,7 @@ import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
 import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
-import { roundsToday, formatRoundsDate } from "@/lib/date";
+import { roundsToday, formatRoundsDate, dateToTimestamp } from "@/lib/date";
 import { derivedLabs, interpretGases, derivedVentilation } from "@/lib/clinical";
 import {
   formatLabsText,
@@ -16,38 +16,16 @@ import {
   LAB_FIELD_NAMES,
 } from "@/lib/labs-fields";
 import ClinicalResults from "@/app/components/ClinicalResults";
+import {
+  ORDER_CATEGORIES,
+  type MedicalOrder,
+} from "@/lib/orders";
 
 type PresentationRecord = {
   id: string;
   presented_on: string;
   content: string;
 };
-
-type MedicalOrder = {
-  id: string;
-  category: string;
-  description: string;
-  dose: string | null;
-  route: string | null;
-  frequency: string | null;
-  suspended: boolean;
-  suspended_at: string | null;
-};
-
-const ORDER_CATEGORIES: Array<{ key: string; label: string; hint: string }> = [
-  { key: "dieta", label: "Dieta", hint: "Ayuno, blanda, hiposódica…" },
-  {
-    key: "soluciones",
-    label: "Soluciones e infusiones",
-    hint: "Cristaloides, aminas, infusiones continuas",
-  },
-  {
-    key: "inhaloterapia",
-    label: "Inhaloterapia",
-    hint: "Broncodilatadores, esteroide inhalado, oxígeno",
-  },
-  { key: "medicamentos", label: "Medicamentos", hint: "Esquema actual" },
-];
 
 type VentilationRecord = {
   id: string;
@@ -117,7 +95,7 @@ const noteAuthorMap = new Map(
     .select("*")
     .eq("patient_id", id)
     .eq("team_id", CURRENT_TEAM_ID)
-    .order("created_at", { ascending: false })
+    .order("sampled_at", { ascending: false })
     .limit(1)
     .single();
 
@@ -126,7 +104,7 @@ const noteAuthorMap = new Map(
     .select("*")
     .eq("patient_id", id)
     .eq("team_id", CURRENT_TEAM_ID)
-    .order("created_at", { ascending: false })
+    .order("sampled_at", { ascending: false })
     .limit(5);
 
   const { data: vitalsHistory } = await supabase
@@ -307,7 +285,7 @@ const {
       .select("*")
       .eq("patient_id", id)
       .eq("team_id", CURRENT_TEAM_ID)
-      .order("created_at", { ascending: false })
+      .order("sampled_at", { ascending: false })
       .limit(1)
       .single();
 
@@ -685,6 +663,10 @@ PLAN R++:
       String(formData.get("otros") ?? "").trim() ||
       (rawLabs && capturados === 0 ? rawLabs : null);
 
+    newLabs.sampled_at =
+      dateToTimestamp(String(formData.get("sampled_on") ?? "")) ??
+      new Date().toISOString();
+
     const hasAnyLab = Object.entries(newLabs).some(
       ([key, value]) => key !== "patient_id" && key !== "team_id" && value !== null
     );
@@ -795,7 +777,9 @@ PLAN R++:
   }
 
   function labDate(lab: any) {
-    return new Date(lab.created_at).toLocaleDateString("es-MX", {
+    // sampled_at es la fecha de toma; created_at solo el respaldo de registros
+    // capturados antes de que existiera la columna.
+    return new Date(lab.sampled_at ?? lab.created_at).toLocaleDateString("es-MX", {
       day: "2-digit",
       month: "2-digit",
     });
@@ -864,7 +848,7 @@ PLAN R++:
     ...(labHistory ?? []).map((lab) => ({
       id: `lab-${lab.id}`,
       type: "Labs",
-      date: lab.created_at,
+      date: lab.sampled_at ?? lab.created_at,
       title: timelineLabs(lab) || "Laboratorios capturados",
       description: "Registro de laboratorio",
       href: null,
@@ -2289,7 +2273,14 @@ PLAN R++:
 
           <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
             <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-2xl font-bold text-cyan-300">Laboratorios</h2>
+              <div>
+                <h2 className="text-2xl font-bold text-cyan-300">Laboratorios</h2>
+                {latestLabs ? (
+                  <p className="text-sm text-slate-400">
+                    Último estudio: {labDate(latestLabs)}
+                  </p>
+                ) : null}
+              </div>
 
               <Link
                 href={`/patients/${id}/labs/new`}
@@ -2348,7 +2339,21 @@ PLAN R++:
             ) : null}
 
             <form action={createLabs} className="space-y-4 rounded-2xl bg-[#071A2F] p-4">
-              <p className="font-semibold text-cyan-300">Captura rápida</p>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <p className="font-semibold text-cyan-300">Captura rápida</p>
+
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-slate-400">
+                    Fecha de toma
+                  </span>
+                  <input
+                    type="date"
+                    name="sampled_on"
+                    defaultValue={roundsDate}
+                    className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-sm text-white outline-none"
+                  />
+                </label>
+              </div>
 
               <div>
                 <textarea

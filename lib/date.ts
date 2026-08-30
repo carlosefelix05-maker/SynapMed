@@ -25,3 +25,12 @@ export function formatRoundsDate(
 
   return new Date(year, month - 1, day).toLocaleDateString("es-MX", options);
 }
+
+// Convierte un "YYYY-MM-DD" de un <input type="date"> en marca de tiempo al
+// mediodía local. El mediodía evita que la fecha se recorra un día al
+// convertirse a UTC, que es lo que pasaría con la medianoche.
+export function dateToTimestamp(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value).trim())) return null;
+
+  return new Date(`${value}T12:00:00`).toISOString();
+}

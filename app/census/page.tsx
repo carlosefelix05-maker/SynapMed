@@ -54,7 +54,7 @@ export default async function CensusPage({
     .from("labs")
     .select("*")
     .eq("team_id", CURRENT_TEAM_ID)
-    .order("created_at", { ascending: false });
+    .order("sampled_at", { ascending: false });
 
   const list = (patients ?? []) as Patient[];
   const labsList = (labs ?? []) as Lab[];

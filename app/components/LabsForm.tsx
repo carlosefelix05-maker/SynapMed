@@ -62,10 +62,12 @@ export default function LabsForm({
   createLabs,
   patient,
   cancelHref,
+  defaultDate,
 }: {
   createLabs: (formData: FormData) => Promise<void>;
   patient: PatientContext;
   cancelHref: string;
+  defaultDate: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
 
@@ -78,6 +80,22 @@ export default function LabsForm({
 
   return (
     <form action={createLabs} className="space-y-8">
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold text-slate-400">
+          Fecha de toma
+        </span>
+        <input
+          type="date"
+          name="sampled_on"
+          defaultValue={defaultDate}
+          className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none"
+        />
+        <span className="mt-1 block text-xs text-slate-500">
+          Cámbiala para capturar laboratorios anteriores. El historial se ordena
+          por esta fecha.
+        </span>
+      </label>
+
       <Section
         title="Química sanguínea"
         fields={QUIMICA}

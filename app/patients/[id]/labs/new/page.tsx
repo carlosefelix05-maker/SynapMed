@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { LAB_FIELD_NAMES } from "@/lib/labs-fields";
+import { roundsToday, dateToTimestamp } from "@/lib/date";
 import LabsForm from "@/app/components/LabsForm";
 
 export default async function NewLabsPage({
@@ -37,6 +38,9 @@ export default async function NewLabsPage({
 
     row.gaso_tipo = String(formData.get("gaso_tipo") ?? "").trim() || null;
     row.otros = String(formData.get("otros") ?? "").trim() || null;
+    row.sampled_at =
+      dateToTimestamp(String(formData.get("sampled_on") ?? "")) ??
+      new Date().toISOString();
 
     const { error } = await supabase.from("labs").insert(row);
 
@@ -94,6 +98,7 @@ export default async function NewLabsPage({
             createLabs={createLabs}
             patient={{ age: patient.age, sex: patient.sex }}
             cancelHref={`/patients/${id}`}
+            defaultDate={roundsToday()}
           />
         </section>
       </div>

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
+import { formatOrdersText, type MedicalOrder } from "@/lib/orders";
 import { getImageClinicalContext } from "@/lib/image-context";
 
 
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       .select("*")
       .eq("patient_id", patientId)
       .eq("team_id", CURRENT_TEAM_ID)
-      .order("created_at", { ascending: false })
+      .order("sampled_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -148,6 +149,15 @@ export async function POST(request: Request) {
 
     const imageClinicalContext = await getImageClinicalContext(supabase, patientId);
 
+    const { data: medicalOrders } = await supabase
+      .from("medical_orders")
+      .select("*")
+      .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
+      .order("created_at", { ascending: true });
+
+    const ordersText = formatOrdersText((medicalOrders ?? []) as MedicalOrder[]);
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
@@ -164,6 +174,7 @@ REGLAS:
 - No incluyas advertencias legales ni menciones que eres IA.
 - Si existe una presentación previa, actualízala con lo ocurrido desde entonces en lugar de repetirla igual.
 - Si hay imágenes interpretadas por IA, menciónalas como lectura clínica preliminar.
+- Puedes mencionar el tratamiento de fondo solo si explica la evolución del caso; no enlistes las indicaciones, eso va en la evolución.
 
 ESTRUCTURA NARRATIVA:
 1. Quién es el paciente: edad, sexo, antecedentes relevantes y motivo de ingreso.
@@ -188,6 +199,9 @@ ${formatVitals(latestVitals)}
 LABORATORIOS RECIENTES:
 ${formatLabsText(latestLab) || "Sin laboratorios recientes capturados."}
 ${formatGasesText(latestLab)}
+
+INDICACIONES MÉDICAS ACTUALES:
+${ordersText}
 
 NOTAS RECIENTES DEL EXPEDIENTE:
 ${JSON.stringify(clinicalNotes, null, 2)}

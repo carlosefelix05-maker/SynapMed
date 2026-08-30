@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
+import { formatOrdersText, type MedicalOrder } from "@/lib/orders";
 import { getImageClinicalContext } from "@/lib/image-context";
 
 
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       .select("*")
       .eq("patient_id", patientId)
       .eq("team_id", CURRENT_TEAM_ID)
-      .order("created_at", { ascending: false })
+      .order("sampled_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
@@ -126,6 +127,15 @@ export async function POST(request: Request) {
 
     const imageClinicalContext = await getImageClinicalContext(supabase, patientId);
 
+    const { data: medicalOrders } = await supabase
+      .from("medical_orders")
+      .select("*")
+      .eq("patient_id", patientId)
+      .eq("team_id", CURRENT_TEAM_ID)
+      .order("created_at", { ascending: true });
+
+    const ordersText = formatOrdersText((medicalOrders ?? []) as MedicalOrder[]);
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const modelNames = ["gemini-3.1-flash-lite", "gemini-2.0-flash"];
 
@@ -146,6 +156,7 @@ REGLAS:
 - Si existen problemas activos registrados, redacta el análisis y plan por problemas.
 - Prioriza problemas Crítico y Alta antes que Media o Baja.
 - Los problemas Resueltos solo se mencionan si modifican conducta actual.
+- Integra las INDICACIONES MÉDICAS ACTUALES al análisis y al plan: el plan debe partir de lo que el paciente ya trae, ajustando, suspendiendo o agregando, no proponer de cero. Si algo se suspendió, considéralo en el análisis.
 
 PACIENTE:
 ${JSON.stringify(patient, null, 2)}
@@ -156,6 +167,9 @@ ${patient.subspecialty || "Medicina Interna"}
 LABORATORIOS RECIENTES EN FORMATO CLÍNICO:
 ${formatLabsText(latestLab) || "Sin laboratorios recientes capturados."}
 ${formatGasesText(latestLab)}
+
+INDICACIONES MÉDICAS ACTUALES:
+${ordersText}
 
 LABORATORIOS CRUDOS:
 ${JSON.stringify(latestLab, null, 2)}
