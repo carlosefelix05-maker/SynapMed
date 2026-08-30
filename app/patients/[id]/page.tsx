@@ -567,11 +567,12 @@ PLAN R++:
     revalidatePath(`/patients/${id}`);
   }
 
-  async function resumeOrder(formData: FormData) {
+  // El id llega enlazado con bind: un botón con formAction de función no puede
+  // llevar name/value propios, React los usa para codificar la acción.
+  async function resumeOrder(orderId: string) {
     "use server";
 
     const supabase = await createClient();
-    const orderId = String(formData.get("orderId") ?? "").trim();
 
     if (!orderId) return;
 
@@ -590,11 +591,10 @@ PLAN R++:
     revalidatePath(`/patients/${id}`);
   }
 
-  async function deleteOrder(formData: FormData) {
+  async function deleteOrder(orderId: string) {
     "use server";
 
     const supabase = await createClient();
-    const orderId = String(formData.get("orderId") ?? "").trim();
 
     if (!orderId) return;
 
@@ -1702,9 +1702,7 @@ PLAN R++:
                             {order.suspended ? (
                               <button
                                 type="submit"
-                                formAction={resumeOrder}
-                                name="orderId"
-                                value={order.id}
+                                formAction={resumeOrder.bind(null, order.id)}
                                 className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
                               >
                                 Reanudar
@@ -1712,9 +1710,7 @@ PLAN R++:
                             ) : null}
 
                             <ConfirmSubmitButton
-                              formAction={deleteOrder}
-                              name="orderId"
-                              value={order.id}
+                              formAction={deleteOrder.bind(null, order.id)}
                               message={`¿Borrar "${order.description}" del expediente? Esto es para errores de captura: si se retiró al paciente, márcalo como suspendido.`}
                               className="text-xs text-red-300 hover:text-red-200"
                             >
