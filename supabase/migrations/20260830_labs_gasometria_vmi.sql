@@ -6,8 +6,9 @@
 -- ---------------------------------------------------------------------------
 -- 1. Laboratorios: completar el formato de la nota
 -- ---------------------------------------------------------------------------
--- Ya existían: glu, ure, bun, cr, na, k, cl, ca, p, mg, leu, hb, hto, plt,
--- pct, pcr, bnp, otros.
+-- Ya existían: glu, cr, na, k, leu, hb, pct, pcr, bnp, otros.
+-- OJO: ure, bun, ca, p, cl, mg, hto y plt NO existían aunque el código las
+-- leyera; se agregan en 20260830_labs_columnas_faltantes.sql.
 
 alter table public.labs
   -- Química sanguínea
