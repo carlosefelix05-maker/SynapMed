@@ -23,6 +23,32 @@ type PresentationRecord = {
   content: string;
 };
 
+type MedicalOrder = {
+  id: string;
+  category: string;
+  description: string;
+  dose: string | null;
+  route: string | null;
+  frequency: string | null;
+  suspended: boolean;
+  suspended_at: string | null;
+};
+
+const ORDER_CATEGORIES: Array<{ key: string; label: string; hint: string }> = [
+  { key: "dieta", label: "Dieta", hint: "Ayuno, blanda, hiposódica…" },
+  {
+    key: "soluciones",
+    label: "Soluciones e infusiones",
+    hint: "Cristaloides, aminas, infusiones continuas",
+  },
+  {
+    key: "inhaloterapia",
+    label: "Inhaloterapia",
+    hint: "Broncodilatadores, esteroide inhalado, oxígeno",
+  },
+  { key: "medicamentos", label: "Medicamentos", hint: "Esquema actual" },
+];
+
 type VentilationRecord = {
   id: string;
   recorded_at: string;
@@ -190,6 +216,18 @@ const noteAuthorMap = new Map(
     .limit(6);
 
   const latestVentilation = (ventilationHistory ?? [])[0] ?? null;
+
+  const { data: medicalOrders } = await supabase
+    .from("medical_orders")
+    .select("*")
+    .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
+    .order("created_at", { ascending: true });
+
+  const ordersOf = (category: string) =>
+    ((medicalOrders ?? []) as MedicalOrder[]).filter(
+      (order) => order.category === category
+    );
 
   const patientContext = { age: patient?.age ?? null, sex: patient?.sex ?? null };
 
@@ -463,6 +501,117 @@ PLAN R++:
     revalidatePath(`/patients/${id}`);
   }
 
+
+  async function addOrder(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const category = String(formData.get("category") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (!description || !category) return;
+
+    const optional = (name: string) =>
+      String(formData.get(name) ?? "").trim() || null;
+
+    const { error } = await supabase.from("medical_orders").insert({
+      patient_id: id,
+      team_id: CURRENT_TEAM_ID,
+      category,
+      description,
+      dose: optional("dose"),
+      route: optional("route"),
+      frequency: optional("frequency"),
+      created_by: user?.id ?? null,
+    });
+
+    if (error) {
+      console.error("No se pudo agregar la indicación:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  // Suspende en lote lo que quedó marcado. Es la casilla de al lado de cada
+  // indicación: se marcan varias durante el pase y se guarda una sola vez.
+  async function applySuspensions(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+
+    const ids = formData
+      .getAll("suspend")
+      .map((value) => String(value).trim())
+      .filter(Boolean);
+
+    if (!ids.length) return;
+
+    const { error } = await supabase
+      .from("medical_orders")
+      .update({ suspended: true, suspended_at: new Date().toISOString() })
+      .in("id", ids)
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    if (error) {
+      console.error("No se pudieron suspender las indicaciones:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function resumeOrder(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+    const orderId = String(formData.get("orderId") ?? "").trim();
+
+    if (!orderId) return;
+
+    const { error } = await supabase
+      .from("medical_orders")
+      .update({ suspended: false, suspended_at: null })
+      .eq("id", orderId)
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    if (error) {
+      console.error("No se pudo reanudar la indicación:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
+
+  async function deleteOrder(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+    const orderId = String(formData.get("orderId") ?? "").trim();
+
+    if (!orderId) return;
+
+    const { error } = await supabase
+      .from("medical_orders")
+      .delete()
+      .eq("id", orderId)
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    if (error) {
+      console.error("No se pudo borrar la indicación:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+  }
 
   async function deletePresentation(formData: FormData) {
     "use server";
@@ -1475,6 +1624,171 @@ PLAN R++:
               Paciente sin ventilación mecánica invasiva.
             </div>
           )}
+        </section>
+
+        <section className="mt-6 rounded-3xl bg-white/10 p-6">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold text-cyan-300">
+              💊 Indicaciones médicas
+            </h2>
+            <p className="text-sm text-slate-400">
+              Marca la casilla de lo que se suspende y guarda al final del bloque.
+              Lo suspendido se conserva con su fecha.
+            </p>
+          </div>
+
+          <form action={applySuspensions} className="space-y-4">
+            {ORDER_CATEGORIES.map((category) => {
+              const items = ordersOf(category.key);
+              const activos = items.filter((order) => !order.suspended);
+              const suspendidos = items.filter((order) => order.suspended);
+
+              return (
+                <div key={category.key} className="rounded-2xl bg-[#071A2F] p-4">
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="font-semibold text-cyan-300">{category.label}</h3>
+                    <span className="text-xs text-slate-500">{category.hint}</span>
+                  </div>
+
+                  {items.length === 0 ? (
+                    <p className="text-sm text-slate-500">Sin indicaciones registradas.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {[...activos, ...suspendidos].map((order) => (
+                        <div
+                          key={order.id}
+                          className={`flex items-start justify-between gap-3 rounded-xl border p-3 ${
+                            order.suspended
+                              ? "border-white/5 bg-white/5 opacity-60"
+                              : "border-white/10 bg-white/5"
+                          }`}
+                        >
+                          <label className="flex flex-1 items-start gap-3">
+                            {order.suspended ? null : (
+                              <input
+                                type="checkbox"
+                                name="suspend"
+                                value={order.id}
+                                className="mt-1 h-4 w-4 shrink-0 accent-red-400"
+                              />
+                            )}
+
+                            <span>
+                              <span className="block font-semibold text-white">
+                                {order.description}
+                              </span>
+
+                              {[order.dose, order.route, order.frequency].filter(Boolean)
+                                .length > 0 ? (
+                                <span className="block text-xs text-slate-400">
+                                  {[order.dose, order.route, order.frequency]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </span>
+                              ) : null}
+
+                              {order.suspended ? (
+                                <span className="block text-xs font-semibold text-amber-300">
+                                  Suspendido
+                                  {order.suspended_at
+                                    ? ` el ${timelineDate(order.suspended_at)}`
+                                    : ""}
+                                </span>
+                              ) : null}
+                            </span>
+                          </label>
+
+                          <div className="flex shrink-0 items-center gap-3">
+                            {order.suspended ? (
+                              <button
+                                type="submit"
+                                formAction={resumeOrder}
+                                name="orderId"
+                                value={order.id}
+                                className="text-xs font-semibold text-cyan-300 hover:text-cyan-200"
+                              >
+                                Reanudar
+                              </button>
+                            ) : null}
+
+                            <ConfirmSubmitButton
+                              formAction={deleteOrder}
+                              name="orderId"
+                              value={order.id}
+                              message={`¿Borrar "${order.description}" del expediente? Esto es para errores de captura: si se retiró al paciente, márcalo como suspendido.`}
+                              className="text-xs text-red-300 hover:text-red-200"
+                            >
+                              Borrar
+                            </ConfirmSubmitButton>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <button
+              type="submit"
+              className="rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              Guardar suspensiones
+            </button>
+          </form>
+
+          <form
+            action={addOrder}
+            className="mt-5 space-y-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4"
+          >
+            <p className="font-semibold text-cyan-300">Agregar indicación</p>
+
+            <div className="grid gap-3 md:grid-cols-6">
+              <select
+                name="category"
+                defaultValue="medicamentos"
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none"
+              >
+                {ORDER_CATEGORIES.map((category) => (
+                  <option key={category.key} value={category.key}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                name="description"
+                required
+                placeholder="Nombre o descripción"
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none placeholder:text-slate-600 md:col-span-2"
+              />
+
+              <input
+                name="dose"
+                placeholder="Dosis"
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none placeholder:text-slate-600"
+              />
+
+              <input
+                name="route"
+                placeholder="Vía"
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none placeholder:text-slate-600"
+              />
+
+              <input
+                name="frequency"
+                placeholder="Frecuencia"
+                className="rounded-xl border border-white/10 bg-[#071A2F] px-3 py-2 text-white outline-none placeholder:text-slate-600"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-cyan-400 px-5 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              + Agregar
+            </button>
+          </form>
         </section>
 
         <section className="mt-6 rounded-3xl border border-cyan-400/20 bg-cyan-400/5 p-6">
