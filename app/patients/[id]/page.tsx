@@ -9,7 +9,12 @@ import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
 import { roundsToday, formatRoundsDate } from "@/lib/date";
 import { derivedLabs, interpretGases, derivedVentilation } from "@/lib/clinical";
-import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
+import {
+  formatLabsText,
+  formatGasesText,
+  parseLabsText,
+  LAB_FIELD_NAMES,
+} from "@/lib/labs-fields";
 import ClinicalResults from "@/app/components/ClinicalResults";
 
 type PresentationRecord = {
@@ -459,49 +464,77 @@ PLAN R++:
   }
 
 
+  async function deletePresentation(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+    const presentationId = String(formData.get("presentationId") ?? "").trim();
+
+    if (!presentationId) return;
+
+    const { error } = await supabase
+      .from("presentations")
+      .delete()
+      .eq("id", presentationId)
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    if (error) {
+      console.error("No se pudo borrar la presentación:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
+  }
+
+  async function deleteVentilation(formData: FormData) {
+    "use server";
+
+    const supabase = await createClient();
+    const recordId = String(formData.get("ventilationId") ?? "").trim();
+
+    if (!recordId) return;
+
+    const { error } = await supabase
+      .from("ventilation")
+      .delete()
+      .eq("id", recordId)
+      .eq("patient_id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    if (error) {
+      console.error("No se pudo borrar el registro del ventilador:", error.message);
+      return;
+    }
+
+    revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
+  }
+
   async function createLabs(formData: FormData) {
     "use server";
     const supabase = await createClient();
 
     const rawLabs = String(formData.get("rawLabs") ?? "").trim();
+    const parsed = parseLabsText(rawLabs);
 
-    function extractLab(patterns: RegExp[]) {
-      for (const pattern of patterns) {
-        const match = rawLabs.match(pattern);
-        if (match?.[1]) return match[1];
-      }
-
-      return null;
-    }
-
-    const parsedLabs = rawLabs
-      ? {
-          glu: extractLab([/\bGLU\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bGLUCOSA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          cr: extractLab([/\bCR\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bCRE\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bCREATININA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          na: extractLab([/\bNA\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bSODIO\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          k: extractLab([/\bK\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bPOTASIO\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          hb: extractLab([/\bHB\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bHEMOGLOBINA\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          leu: extractLab([/\bLEU\s*[:=]?\s*(\d+(?:\.\d+)?)/i, /\bLEUCOCITOS\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          pct: extractLab([/\bPCT\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          bnp: extractLab([/\bBNP\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-          pcr: extractLab([/\bPCR\s*[:=]?\s*(\d+(?:\.\d+)?)/i]),
-        }
-      : null;
-
-    const newLabs = {
+    const newLabs: Record<string, string | null> = {
       patient_id: id,
       team_id: CURRENT_TEAM_ID,
-      glu: String(formData.get("glu") ?? "").trim() || parsedLabs?.glu || null,
-      cr: String(formData.get("cr") ?? "").trim() || parsedLabs?.cr || null,
-      na: String(formData.get("na") ?? "").trim() || parsedLabs?.na || null,
-      k: String(formData.get("k") ?? "").trim() || parsedLabs?.k || null,
-      hb: String(formData.get("hb") ?? "").trim() || parsedLabs?.hb || null,
-      leu: String(formData.get("leu") ?? "").trim() || parsedLabs?.leu || null,
-      pct: String(formData.get("pct") ?? "").trim() || parsedLabs?.pct || null,
-      bnp: String(formData.get("bnp") ?? "").trim() || parsedLabs?.bnp || null,
-      pcr: String(formData.get("pcr") ?? "").trim() || parsedLabs?.pcr || null,
-      otros: String(formData.get("otros") ?? "").trim() || (rawLabs ? `Texto original: ${rawLabs}` : null),
     };
+
+    for (const name of LAB_FIELD_NAMES) {
+      newLabs[name] = parsed[name] ?? null;
+    }
+
+    const capturados = Object.keys(parsed).length;
+
+    // El texto original solo se guarda si no se pudo repartir en campos:
+    // así no ensucia la línea del formato con una copia de todo.
+    newLabs.otros =
+      String(formData.get("otros") ?? "").trim() ||
+      (rawLabs && capturados === 0 ? rawLabs : null);
 
     const hasAnyLab = Object.entries(newLabs).some(
       ([key, value]) => key !== "patient_id" && key !== "team_id" && value !== null
@@ -1086,15 +1119,31 @@ PLAN R++:
                     Pase del {formatRoundsDate(currentPresentation.presented_on)}
                   </h3>
 
-                  {todayPresentation ? (
-                    <span className="text-xs font-semibold text-green-300">
-                      Presentación de hoy
-                    </span>
-                  ) : (
-                    <span className="text-xs font-semibold text-amber-300">
-                      Aún no hay presentación de hoy
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {todayPresentation ? (
+                      <span className="text-xs font-semibold text-green-300">
+                        Presentación de hoy
+                      </span>
+                    ) : (
+                      <span className="text-xs font-semibold text-amber-300">
+                        Aún no hay presentación de hoy
+                      </span>
+                    )}
+
+                    <form action={deletePresentation}>
+                      <input
+                        type="hidden"
+                        name="presentationId"
+                        value={currentPresentation.id}
+                      />
+                      <ConfirmSubmitButton
+                        message={`¿Borrar la presentación del ${formatRoundsDate(currentPresentation.presented_on)}? No se puede deshacer.`}
+                        className="text-xs font-semibold text-red-300 hover:text-red-200"
+                      >
+                        Borrar
+                      </ConfirmSubmitButton>
+                    </form>
+                  </div>
                 </div>
 
                 <p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
@@ -1119,12 +1168,28 @@ PLAN R++:
                             {formatRoundsDate(presentation.presented_on)}
                           </span>
 
-                          <Link
-                            href={`/patients/${id}/presentations/new?date=${presentation.presented_on}`}
-                            className="text-xs text-cyan-300 hover:text-cyan-200"
-                          >
-                            Editar
-                          </Link>
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={`/patients/${id}/presentations/new?date=${presentation.presented_on}`}
+                              className="text-xs text-cyan-300 hover:text-cyan-200"
+                            >
+                              Editar
+                            </Link>
+
+                            <form action={deletePresentation}>
+                              <input
+                                type="hidden"
+                                name="presentationId"
+                                value={presentation.id}
+                              />
+                              <ConfirmSubmitButton
+                                message={`¿Borrar la presentación del ${formatRoundsDate(presentation.presented_on)}? No se puede deshacer.`}
+                                className="text-xs text-red-300 hover:text-red-200"
+                              >
+                                Borrar
+                              </ConfirmSubmitButton>
+                            </form>
+                          </div>
                         </div>
 
                         <p className="whitespace-pre-wrap text-sm leading-6 text-slate-400">
@@ -1284,10 +1349,26 @@ PLAN R++:
                     <h3 className="font-semibold text-white">
                       {latestVentilation.modo || "Modo no registrado"}
                     </h3>
-                    <span className="text-xs text-slate-400">
-                      {timelineDate(latestVentilation.recorded_at)} ·{" "}
-                      {timelineTime(latestVentilation.recorded_at)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400">
+                        {timelineDate(latestVentilation.recorded_at)} ·{" "}
+                        {timelineTime(latestVentilation.recorded_at)}
+                      </span>
+
+                      <form action={deleteVentilation}>
+                        <input
+                          type="hidden"
+                          name="ventilationId"
+                          value={latestVentilation.id}
+                        />
+                        <ConfirmSubmitButton
+                          message="¿Borrar este registro del ventilador? No se puede deshacer."
+                          className="text-xs font-semibold text-red-300 hover:text-red-200"
+                        >
+                          Borrar
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-4">
@@ -1351,21 +1432,33 @@ PLAN R++:
                       {(ventilationHistory ?? []).slice(1).map((record: VentilationRecord) => (
                         <div
                           key={record.id}
-                          className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300"
+                          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300"
                         >
-                          <span className="text-cyan-300">
-                            {timelineDate(record.recorded_at)} {timelineTime(record.recorded_at)}:
-                          </span>{" "}
-                          {[
-                            record.modo,
-                            record.vt ? `VT ${record.vt}` : null,
-                            record.fr ? `FR ${record.fr}` : null,
-                            record.peep ? `PEEP ${record.peep}` : null,
-                            record.fio2 ? `FiO₂ ${record.fio2}` : null,
-                            record.pplat ? `Pplat ${record.pplat}` : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
+                          <div>
+                            <span className="text-cyan-300">
+                              {timelineDate(record.recorded_at)} {timelineTime(record.recorded_at)}:
+                            </span>{" "}
+                            {[
+                              record.modo,
+                              record.vt ? `VT ${record.vt}` : null,
+                              record.fr ? `FR ${record.fr}` : null,
+                              record.peep ? `PEEP ${record.peep}` : null,
+                              record.fio2 ? `FiO₂ ${record.fio2}` : null,
+                              record.pplat ? `Pplat ${record.pplat}` : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </div>
+
+                          <form action={deleteVentilation}>
+                            <input type="hidden" name="ventilationId" value={record.id} />
+                            <ConfirmSubmitButton
+                              message="¿Borrar este registro del ventilador? No se puede deshacer."
+                              className="shrink-0 text-xs text-red-300 hover:text-red-200"
+                            >
+                              Borrar
+                            </ConfirmSubmitButton>
+                          </form>
                         </div>
                       ))}
                     </div>
@@ -1945,32 +2038,29 @@ PLAN R++:
             ) : null}
 
             <form action={createLabs} className="space-y-4 rounded-2xl bg-[#071A2F] p-4">
-              <p className="font-semibold text-cyan-300">Capturar laboratorios</p>
+              <p className="font-semibold text-cyan-300">Captura rápida</p>
 
               <div>
                 <textarea
                   name="rawLabs"
-                  placeholder="Ejemplo: GLU 92 URE 102 CRE 6.0 NA 140 K 4.2 LEU 12.1 HB 9.8 PLAQ 210"
-                  rows={4}
+                  placeholder="Pega aquí el reporte del laboratorio: Glu 300, Ure 128, Bun 60, Cr 3.0, Alb 2.5, Leu 14.2, Hb 9, Hto 27, Plaq 180, pH 7.20, pCO2 28, HCO3 12, Lactato 4.5..."
+                  rows={5}
                   className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500"
                 />
                 <p className="mt-2 text-xs text-slate-500">
-                  SynapMed intentará llenar Glu, Cr, Na, K, Hb, Leu, PCT, BNP y PCR automáticamente al guardar.
+                  Reparte solo el texto en los campos del formato: química, biometría,
+                  coagulación y gasometría. Acepta &quot;Glu 110&quot;, &quot;GLU: 110&quot; y nombres
+                  completos como &quot;Creatinina&quot; o &quot;Hemoglobina&quot;. Para capturar campo por
+                  campo, usa Captura completa.
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                <input name="glu" placeholder="Glu" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="cr" placeholder="Cr" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="na" placeholder="Na" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="k" placeholder="K" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="hb" placeholder="Hb" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="leu" placeholder="Leu" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="pct" placeholder="PCT" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="bnp" placeholder="BNP" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <input name="pcr" placeholder="PCR" className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500" />
-                <textarea name="otros" placeholder="Otros parámetros: TROP 125, DD 3200, INR 1.3..." rows={3} className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500 md:col-span-3" />
-              </div>
+              <textarea
+                name="otros"
+                placeholder="Otros parámetros sin campo propio"
+                rows={2}
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-slate-500"
+              />
 
               <button type="submit" className="mt-4 rounded-xl bg-cyan-400 px-5 py-3 font-semibold text-slate-950">
                 Guardar laboratorios

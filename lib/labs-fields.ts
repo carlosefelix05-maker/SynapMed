@@ -116,3 +116,91 @@ export function formatGasesText(labs: Record<string, unknown> | null | undefined
   const tipo = String(labs.gaso_tipo ?? "arterial").trim() || "arterial";
   return `Gasometría ${tipo}: ${parts.join(", ")}.`;
 }
+
+// Lee un reporte de laboratorio pegado como texto libre y lo reparte en los
+// campos del formato. Tolera "Glu 110", "GLU: 110", "glu=110" y separadores por
+// coma o salto de línea.
+//
+// El orden importa: las etiquetas largas se buscan antes que las cortas para
+// que "HCO3std" no lo capture "HCO3", ni "TGO" lo capture "TG".
+const PARSE_PATTERNS: Array<[string, string[]]> = [
+  ["hco3std", ["HCO3STD", "HCO3 STD", "BICARBONATO ESTANDAR"]],
+  ["fio2", ["FIO2"]],
+  ["prot_totales", ["PROTEINAS TOTALES", "PROT TOTALES", "PT"]],
+  ["dimero_d", ["DIMERO D", "DIMERO-D", "DD"]],
+  ["fibrinogeno", ["FIBRINOGENO", "FIB"]],
+  ["ag_ratio", ["A/G"]],
+  ["glob", ["GLOBULINAS", "GLOB"]],
+  ["lactato", ["LACTATO", "LAC"]],
+  ["beecf", ["BEECF", "BE ECF"]],
+  ["beb", ["BEB", "BE B"]],
+  ["tco2", ["TCO2"]],
+  ["hco3", ["HCO3", "BICARBONATO"]],
+  ["pco2", ["PCO2", "PACO2"]],
+  ["po2", ["PO2", "PAO2"]],
+  ["so2", ["SO2", "SAT", "SATO2"]],
+  ["ph", ["PH"]],
+  ["chcm", ["CHCM"]],
+  ["vcm", ["VCM"]],
+  ["hcm", ["HCM"]],
+  ["rdw", ["RDW"]],
+  ["plt", ["PLAQUETAS", "PLAQ", "PLT"]],
+  ["hto", ["HEMATOCRITO", "HTO"]],
+  ["hb", ["HEMOGLOBINA", "HB"]],
+  ["eri", ["ERITROCITOS", "ERI"]],
+  ["leu", ["LEUCOCITOS", "LEU"]],
+  ["tpt", ["TPT", "TTPA"]],
+  ["inr", ["INR"]],
+  ["tp", ["TP"]],
+  ["pct", ["PCT", "PROCALCITONINA"]],
+  ["pcr", ["PCR"]],
+  ["ggt", ["GGT"]],
+  ["dhl", ["DHL", "LDH"]],
+  ["fa", ["FOSFATASA ALCALINA", "FA"]],
+  ["alt", ["ALT", "TGP"]],
+  ["ast", ["AST", "TGO"]],
+  ["alb", ["ALBUMINA", "ALB"]],
+  ["bi", ["BI"]],
+  ["bd", ["BD"]],
+  ["bt", ["BT"]],
+  ["tg", ["TRIGLICERIDOS", "TG"]],
+  ["col", ["COLESTEROL", "COL"]],
+  ["au", ["ACIDO URICO", "AU"]],
+  ["cr", ["CREATININA", "CRE", "CR"]],
+  ["bun", ["BUN"]],
+  ["ure", ["UREA", "URE"]],
+  ["glu", ["GLUCOSA", "GLU"]],
+  ["mg", ["MAGNESIO", "MG"]],
+  ["na", ["SODIO", "NA"]],
+  ["k", ["POTASIO", "K"]],
+  ["cl", ["CLORO", "CL"]],
+  ["ca", ["CALCIO", "CA"]],
+  ["p", ["FOSFORO", "P"]],
+  ["bnp", ["NT-PROBNP", "PROBNP", "BNP"]],
+];
+
+export function parseLabsText(text: string): Record<string, string> {
+  const found: Record<string, string> = {};
+  if (!text || !text.trim()) return found;
+
+  // Se quitan acentos para que "Fibrinógeno" o "Dímero D" empaten con las
+  // etiquetas, y se va consumiendo el texto: lo ya capturado por una etiqueta
+  // larga no vuelve a ofrecerse a una corta.
+  let remaining = ` ${text} `.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  for (const [field, labels] of PARSE_PATTERNS) {
+    for (const label of labels) {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+");
+      const pattern = new RegExp(`(^|[^A-Za-zÁÉÍÓÚÑ0-9])${escaped}\\s*[:=]?\\s*(-?\\d+(?:[.,]\\d+)?)`, "i");
+      const match = remaining.match(pattern);
+
+      if (match?.[2]) {
+        found[field] = match[2].replace(",", ".");
+        remaining = remaining.replace(match[0], " ");
+        break;
+      }
+    }
+  }
+
+  return found;
+}
