@@ -2,34 +2,9 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
 import { getImageClinicalContext } from "@/lib/image-context";
 
-function formatLabs(lab: any) {
-  if (!lab) return "Sin laboratorios recientes capturados.";
-
-  return [
-    lab.glu ? `Glu ${lab.glu}` : null,
-    lab.ure ? `Ure ${lab.ure}` : null,
-    lab.bun ? `Bun ${lab.bun}` : null,
-    lab.cr ? `Cr ${lab.cr}` : null,
-    lab.na ? `Na ${lab.na}` : null,
-    lab.k ? `K ${lab.k}` : null,
-    lab.cl ? `Cl ${lab.cl}` : null,
-    lab.ca ? `Ca ${lab.ca}` : null,
-    lab.p ? `P ${lab.p}` : null,
-    lab.mg ? `Mg ${lab.mg}` : null,
-    lab.leu ? `Leu ${lab.leu}` : null,
-    lab.hb ? `Hb ${lab.hb}` : null,
-    lab.hto ? `Hto ${lab.hto}` : null,
-    lab.plt ? `Plaq ${lab.plt}` : null,
-    lab.pct ? `PCT ${lab.pct}` : null,
-    lab.pcr ? `PCR ${lab.pcr}` : null,
-    lab.bnp ? `BNP ${lab.bnp}` : null,
-    lab.otros ? `Otros: ${lab.otros}` : null,
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
 
 function formatVitals(vitals: any) {
   if (!vitals) return "Sin signos vitales capturados.";
@@ -211,7 +186,8 @@ SIGNOS VITALES MÁS RECIENTES:
 ${formatVitals(latestVitals)}
 
 LABORATORIOS RECIENTES:
-${formatLabs(latestLab)}
+${formatLabsText(latestLab) || "Sin laboratorios recientes capturados."}
+${formatGasesText(latestLab)}
 
 NOTAS RECIENTES DEL EXPEDIENTE:
 ${JSON.stringify(clinicalNotes, null, 2)}

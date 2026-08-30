@@ -70,6 +70,7 @@ export default async function EditPatientPage({
     const bed = String(formData.get("bed") ?? "").trim();
     const ageValue = String(formData.get("age") ?? "").trim();
     const sex = String(formData.get("sex") ?? "").trim();
+    const heightValue = String(formData.get("height_cm") ?? "").trim();
     const subspecialty = String(formData.get("subspecialty") ?? "").trim();
     const diagnosis = String(formData.get("diagnosis") ?? "").trim();
     const attending_id =
@@ -86,6 +87,7 @@ export default async function EditPatientPage({
         bed: bed || null,
         age: ageValue ? Number(ageValue) : null,
         sex: sex || null,
+        height_cm: heightValue ? Number(heightValue) : null,
         subspecialty: subspecialty || null,
         diagnosis: diagnosis || null,
         attending_id,
@@ -166,6 +168,22 @@ export default async function EditPatientPage({
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-400">
+                  Talla (cm)
+                </label>
+                <input
+                  name="height_cm"
+                  type="number"
+                  step="0.1"
+                  defaultValue={patient.height_cm || ""}
+                  className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-slate-500"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Necesaria para el peso predicho y el volumen tidal protector en VMI.
+                </p>
               </div>
             </div>
 

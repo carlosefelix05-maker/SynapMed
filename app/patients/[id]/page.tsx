@@ -8,6 +8,29 @@ import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton"
 import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
 import { roundsToday, formatRoundsDate } from "@/lib/date";
+import { derivedLabs, interpretGases, derivedVentilation } from "@/lib/clinical";
+import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
+import ClinicalResults from "@/app/components/ClinicalResults";
+
+type PresentationRecord = {
+  id: string;
+  presented_on: string;
+  content: string;
+};
+
+type VentilationRecord = {
+  id: string;
+  recorded_at: string;
+  modo: string | null;
+  vt: string | null;
+  fr: string | null;
+  peep: string | null;
+  fio2: string | null;
+  pplat: string | null;
+  ppico: string | null;
+  pao2: string | null;
+  notes: string | null;
+};
 
 export default async function PatientPage({
   params,
@@ -152,6 +175,50 @@ const noteAuthorMap = new Map(
   const previousPresentations = (presentations ?? []).filter(
     (presentation: any) => presentation.id !== currentPresentation?.id
   );
+
+  const { data: ventilationHistory } = await supabase
+    .from("ventilation")
+    .select("*")
+    .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
+    .order("recorded_at", { ascending: false })
+    .limit(6);
+
+  const latestVentilation = (ventilationHistory ?? [])[0] ?? null;
+
+  const patientContext = { age: patient?.age ?? null, sex: patient?.sex ?? null };
+
+  const labResults = derivedLabs(latestLabs ?? {}, patientContext);
+  const gasResults = interpretGases(latestLabs ?? {}, patientContext);
+
+  const ventilationResults = latestVentilation
+    ? derivedVentilation({
+        sex: patient?.sex ?? null,
+        heightCm: patient?.height_cm ?? null,
+        vt: latestVentilation.vt,
+        fr: latestVentilation.fr,
+        peep: latestVentilation.peep,
+        fio2: latestVentilation.fio2,
+        pplat: latestVentilation.pplat,
+        ppico: latestVentilation.ppico,
+        pao2: latestVentilation.pao2,
+      })
+    : [];
+
+  async function toggleVmi() {
+    "use server";
+
+    const supabase = await createClient();
+
+    await supabase
+      .from("patients")
+      .update({ on_vmi: !patient?.on_vmi })
+      .eq("id", id)
+      .eq("team_id", CURRENT_TEAM_ID);
+
+    revalidatePath(`/patients/${id}`);
+    revalidatePath("/");
+  }
 
   async function createNote(formData: FormData) {
     "use server";
@@ -1042,7 +1109,7 @@ PLAN R++:
                   </summary>
 
                   <div className="mt-4 space-y-4">
-                    {previousPresentations.map((presentation: any) => (
+                    {previousPresentations.map((presentation: PresentationRecord) => (
                       <div
                         key={presentation.id}
                         className="rounded-xl border border-white/10 bg-white/5 p-4"
@@ -1167,6 +1234,152 @@ PLAN R++:
           ) : (
             <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-400">
               Sin signos vitales capturados. Agrega los SV del pase para integrarlos al expediente.
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-3xl bg-white/10 p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cyan-300">
+                🫁 Ventilación mecánica
+              </h2>
+              <p className="text-sm text-slate-400">
+                {patient.on_vmi
+                  ? "Parámetros del ventilador y cálculos de protección pulmonar"
+                  : "Marca si el paciente está intubado para capturar parámetros"}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <form action={toggleVmi}>
+                <button
+                  type="submit"
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                    patient.on_vmi
+                      ? "bg-white/10 text-slate-200 hover:bg-white/20"
+                      : "bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                  }`}
+                >
+                  {patient.on_vmi ? "Marcar sin VMI" : "Marcar con VMI"}
+                </button>
+              </form>
+
+              {patient.on_vmi ? (
+                <Link
+                  href={`/patients/${id}/ventilation/new`}
+                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                >
+                  + Capturar parámetros
+                </Link>
+              ) : null}
+            </div>
+          </div>
+
+          {patient.on_vmi ? (
+            latestVentilation ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-cyan-300/20 bg-[#071A2F] p-4">
+                  <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                    <h3 className="font-semibold text-white">
+                      {latestVentilation.modo || "Modo no registrado"}
+                    </h3>
+                    <span className="text-xs text-slate-400">
+                      {timelineDate(latestVentilation.recorded_at)} ·{" "}
+                      {timelineTime(latestVentilation.recorded_at)}
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-4">
+                    {(
+                      [
+                      ["VT", latestVentilation.vt, "ml"],
+                      ["FR", latestVentilation.fr, "rpm"],
+                      ["PEEP", latestVentilation.peep, "cmH₂O"],
+                      ["FiO₂", latestVentilation.fio2, "%"],
+                      ["Pplat", latestVentilation.pplat, "cmH₂O"],
+                      ["Ppico", latestVentilation.ppico, "cmH₂O"],
+                      ["PaO₂", latestVentilation.pao2, "mmHg"],
+                    ] as [string, string | null, string][]
+                    ).map(([label, value, unit]) => (
+                      <div key={label} className="rounded-xl bg-white/5 p-3">
+                        <p className="text-xs text-slate-400">{label}</p>
+                        <p className="text-xl font-bold">
+                          {value || "—"}
+                          {value ? (
+                            <span className="ml-1 text-xs font-normal text-slate-500">
+                              {unit}
+                            </span>
+                          ) : null}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {latestVentilation.notes ? (
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">
+                      {latestVentilation.notes}
+                    </p>
+                  ) : null}
+                </div>
+
+                {ventilationResults.length > 0 ? (
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                    <h3 className="mb-3 text-sm font-bold text-cyan-300">
+                      Cálculos automáticos
+                    </h3>
+                    <ClinicalResults results={ventilationResults} />
+                  </div>
+                ) : (
+                  <p className="rounded-2xl border border-amber-300/30 bg-amber-400/10 p-4 text-sm text-amber-100">
+                    Falta la talla del paciente para calcular peso predicho y volumen
+                    tidal protector.{" "}
+                    <Link href={`/patients/${id}/edit`} className="font-semibold underline">
+                      Capturarla
+                    </Link>
+                    .
+                  </p>
+                )}
+
+                {(ventilationHistory ?? []).length > 1 ? (
+                  <details className="rounded-2xl bg-[#071A2F] p-4">
+                    <summary className="cursor-pointer text-sm font-semibold text-cyan-300">
+                      Historial del ventilador ({(ventilationHistory ?? []).length - 1})
+                    </summary>
+
+                    <div className="mt-3 space-y-2">
+                      {(ventilationHistory ?? []).slice(1).map((record: VentilationRecord) => (
+                        <div
+                          key={record.id}
+                          className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300"
+                        >
+                          <span className="text-cyan-300">
+                            {timelineDate(record.recorded_at)} {timelineTime(record.recorded_at)}:
+                          </span>{" "}
+                          {[
+                            record.modo,
+                            record.vt ? `VT ${record.vt}` : null,
+                            record.fr ? `FR ${record.fr}` : null,
+                            record.peep ? `PEEP ${record.peep}` : null,
+                            record.fio2 ? `FiO₂ ${record.fio2}` : null,
+                            record.pplat ? `Pplat ${record.pplat}` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-400">
+                Paciente marcado con VMI, sin parámetros capturados todavía.
+              </div>
+            )
+          ) : (
+            <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-400">
+              Paciente sin ventilación mecánica invasiva.
             </div>
           )}
         </section>
@@ -1672,11 +1885,52 @@ PLAN R++:
           </section>
 
           <section className="rounded-3xl bg-white/10 p-6 lg:col-span-2">
-            <h2 className="mb-4 text-2xl font-bold text-cyan-300">Laboratorios</h2>
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-2xl font-bold text-cyan-300">Laboratorios</h2>
 
-            <p className="mb-6 text-slate-300">
-              {labsResumen || "Sin laboratorios registrados"}
+              <Link
+                href={`/patients/${id}/labs/new`}
+                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+              >
+                Captura completa
+              </Link>
+            </div>
+
+            <p className="mb-3 leading-7 text-slate-300">
+              {formatLabsText(latestLabs) || labsResumen || "Sin laboratorios registrados"}
             </p>
+
+            {formatGasesText(latestLabs) ? (
+              <p className="mb-4 leading-7 text-slate-300">
+                {formatGasesText(latestLabs)}
+              </p>
+            ) : null}
+
+            {labResults.length > 0 ? (
+              <div className="mb-4 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                <h3 className="mb-3 text-sm font-bold text-cyan-300">
+                  Cálculos automáticos
+                </h3>
+                <ClinicalResults results={labResults} />
+              </div>
+            ) : null}
+
+            {gasResults ? (
+              <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+                <h3 className="mb-3 text-sm font-bold text-cyan-300">Gasometría</h3>
+
+                <ClinicalResults
+                  results={gasResults.results}
+                  columns="sm:grid-cols-2 lg:grid-cols-3"
+                />
+
+                {gasResults.interpretation ? (
+                  <p className="mt-3 rounded-xl bg-[#071A2F] p-4 text-sm leading-6 text-slate-200">
+                    {gasResults.interpretation}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {labHistory && labHistory.length > 0 ? (
               <div className="mb-6 space-y-2">
