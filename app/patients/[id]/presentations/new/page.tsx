@@ -73,17 +73,20 @@ export default async function PresentationEditorPage({
     );
 
     if (error) {
-      console.error("No se pudo guardar la presentación:", error);
+      console.error("No se pudo guardar la presentación:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+      });
 
-      // Caso típico mientras la tabla no exista todavía en Supabase.
-      const missingTable =
-        error.code === "42P01" ||
-        String(error.message || "").includes("presentations");
+      const detail = error.message || error.code || "";
 
+      // PostgREST tarda unos segundos en ver una tabla recién creada: en ese
+      // hueco devuelve el error sin mensaje.
       return {
-        message: missingTable
-          ? `No se pudo guardar: ${error.message}. Revisa que la tabla presentations exista en Supabase (supabase/migrations/20260830_presentations.sql).`
-          : `No se pudo guardar: ${error.message}`,
+        message: detail
+          ? `No se pudo guardar: ${detail}`
+          : "No se pudo guardar y el servidor no devolvió detalle. Si acabas de crear la tabla presentations en Supabase, espera unos segundos y vuelve a intentar.",
       };
     }
 
