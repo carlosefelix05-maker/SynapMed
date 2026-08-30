@@ -7,6 +7,7 @@ import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
 import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
+import { roundsToday, formatRoundsDate } from "@/lib/date";
 
 export default async function PatientPage({
   params,
@@ -129,6 +130,28 @@ const noteAuthorMap = new Map(
     .select("id, full_name, bed, subspecialty")
     .eq("team_id", CURRENT_TEAM_ID)
     .order("bed", { ascending: true });
+
+  const { data: presentations } = await supabase
+    .from("presentations")
+    .select("id, presented_on, content, updated_at")
+    .eq("patient_id", id)
+    .eq("team_id", CURRENT_TEAM_ID)
+    .order("presented_on", { ascending: false })
+    .limit(10);
+
+  const roundsDate = roundsToday();
+
+  const todayPresentation =
+    (presentations ?? []).find(
+      (presentation: any) => presentation.presented_on === roundsDate
+    ) ?? null;
+
+  // Si hoy todavía no se presenta el caso, se muestra la última disponible.
+  const currentPresentation = todayPresentation ?? (presentations ?? [])[0] ?? null;
+
+  const previousPresentations = (presentations ?? []).filter(
+    (presentation: any) => presentation.id !== currentPresentation?.id
+  );
 
   async function createNote(formData: FormData) {
     "use server";
@@ -967,6 +990,91 @@ PLAN R++:
               <p className="text-2xl font-bold">{patient.priority}</p>
             </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-cyan-400/20 bg-white/10 p-6">
+          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cyan-300">
+                🗣️ Presentación del pase
+              </h2>
+              <p className="text-sm text-slate-400">
+                Resumen con el que se presenta el caso al inicio del pase de visita
+              </p>
+            </div>
+
+            <Link
+              href={`/patients/${id}/presentations/new`}
+              className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+            >
+              {todayPresentation ? "Editar presentación de hoy" : "+ Presentación de hoy"}
+            </Link>
+          </div>
+
+          {currentPresentation ? (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-cyan-300/20 bg-[#071A2F] p-5">
+                <div className="mb-3 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                  <h3 className="font-semibold text-white">
+                    Pase del {formatRoundsDate(currentPresentation.presented_on)}
+                  </h3>
+
+                  {todayPresentation ? (
+                    <span className="text-xs font-semibold text-green-300">
+                      Presentación de hoy
+                    </span>
+                  ) : (
+                    <span className="text-xs font-semibold text-amber-300">
+                      Aún no hay presentación de hoy
+                    </span>
+                  )}
+                </div>
+
+                <p className="whitespace-pre-wrap text-sm leading-7 text-slate-200">
+                  {currentPresentation.content}
+                </p>
+              </div>
+
+              {previousPresentations.length > 0 ? (
+                <details className="rounded-2xl bg-[#071A2F] p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-cyan-300">
+                    Historial de presentaciones ({previousPresentations.length})
+                  </summary>
+
+                  <div className="mt-4 space-y-4">
+                    {previousPresentations.map((presentation: any) => (
+                      <div
+                        key={presentation.id}
+                        className="rounded-xl border border-white/10 bg-white/5 p-4"
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold text-slate-300">
+                            {formatRoundsDate(presentation.presented_on)}
+                          </span>
+
+                          <Link
+                            href={`/patients/${id}/presentations/new?date=${presentation.presented_on}`}
+                            className="text-xs text-cyan-300 hover:text-cyan-200"
+                          >
+                            Editar
+                          </Link>
+                        </div>
+
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-slate-400">
+                          {presentation.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-[#071A2F] p-4 text-sm text-slate-400">
+              Sin presentación todavía. Escríbela o genérala con IA a partir de las
+              notas, laboratorios y signos vitales del paciente.
+            </div>
+          )}
         </section>
 
         <section className="mt-6 rounded-3xl bg-white/10 p-6">
