@@ -103,7 +103,9 @@ export function formatLabsText(labs: Record<string, unknown> | null | undefined)
 export function formatGasesText(labs: Record<string, unknown> | null | undefined): string {
   if (!labs) return "";
 
-  const parts = GASOMETRIA.map((field) => {
+  // FiO2 se captura para calcular P/F y el gradiente A-a, pero no forma parte
+  // del formato de la nota: la línea va de pH a Lactato.
+  const parts = GASOMETRIA.filter((field) => field.name !== "fio2").map((field) => {
     const value = labs[field.name];
     const clean = value === null || value === undefined ? "" : String(value).trim();
     return clean ? `${field.label} ${clean}` : null;
