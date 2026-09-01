@@ -16,6 +16,7 @@ import {
   LAB_FIELD_NAMES,
 } from "@/lib/labs-fields";
 import ClinicalResults from "@/app/components/ClinicalResults";
+import CopyButton from "@/app/components/CopyButton";
 import {
   ORDER_CATEGORIES,
   type MedicalOrder,
@@ -2282,12 +2283,31 @@ PLAN R++:
                 ) : null}
               </div>
 
-              <Link
-                href={`/patients/${id}/labs/new`}
-                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
-              >
-                Captura completa
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                {latestLabs ? (
+                  <CopyButton
+                    text={[formatLabsText(latestLabs), formatGasesText(latestLabs)]
+                      .filter(Boolean)
+                      .join("\n\n")}
+                    label="Copiar en mi formato"
+                    className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/20"
+                  />
+                ) : null}
+
+                <Link
+                  href={`/patients/${id}/labs`}
+                  className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/20"
+                >
+                  Comparativo
+                </Link>
+
+                <Link
+                  href={`/patients/${id}/labs/new`}
+                  className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300"
+                >
+                  Captura completa
+                </Link>
+              </div>
             </div>
 
             <p className="mb-3 leading-7 text-slate-300">
