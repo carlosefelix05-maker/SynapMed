@@ -3,13 +3,18 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { describeError, withError } from "@/lib/action-error";
+import ActionError from "@/app/components/ActionError";
 
 export default async function NewPatientVitalsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
   const supabase = await createClient();
 
   const { data: patient } = await supabase
@@ -49,7 +54,13 @@ const { error } = await supabase.from("patient_vitals").insert({      patient_id
     });
 if (error) {
   console.error("Error al guardar SV:", error.message);
-  return;
+
+  redirect(
+    withError(
+      `/patients/${id}/vitals/new`,
+      describeError(error, "No se pudieron guardar los signos vitales")
+    )
+  );
 }
     redirect(`/patients/${id}`);
   }
@@ -57,6 +68,8 @@ if (error) {
   return (
     <main className="min-h-screen bg-[#071A2F] p-6 text-white md:p-10">
       <div className="mx-auto max-w-5xl">
+        <ActionError message={query?.error} />
+
         <header className="mb-8 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
             Signos vitales

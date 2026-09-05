@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import VentilationForm from "@/app/components/VentilationForm";
+import { describeError, type ActionState } from "@/lib/action-error";
 
 export default async function NewVentilationPage({
   params,
@@ -20,7 +21,10 @@ export default async function NewVentilationPage({
     .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
-  async function createVentilation(formData: FormData) {
+  async function createVentilation(
+    _state: ActionState,
+    formData: FormData
+  ): Promise<ActionState> {
     "use server";
 
     const supabase = await createClient();
@@ -56,7 +60,13 @@ export default async function NewVentilationPage({
         code: error.code,
         details: error.details,
       });
-      return;
+
+      return {
+        message: describeError(
+          error,
+          "No se pudieron guardar los parámetros del ventilador"
+        ),
+      };
     }
 
     // Capturar parámetros implica que el paciente está ventilado.

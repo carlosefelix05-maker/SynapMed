@@ -4,9 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { roundsToday, formatRoundsDate } from "@/lib/date";
-import PresentationEditor, {
-  type PresentationFormState,
-} from "@/app/components/PresentationEditor";
+import PresentationEditor from "@/app/components/PresentationEditor";
+import { describeError, type ActionState } from "@/lib/action-error";
 
 export default async function PresentationEditorPage({
   params,
@@ -40,9 +39,9 @@ export default async function PresentationEditorPage({
     .maybeSingle();
 
   async function savePresentation(
-    _state: PresentationFormState,
+    _state: ActionState,
     formData: FormData
-  ): Promise<PresentationFormState> {
+  ): Promise<ActionState> {
     "use server";
 
     const supabase = await createClient();
@@ -79,14 +78,8 @@ export default async function PresentationEditorPage({
         details: error.details,
       });
 
-      const detail = error.message || error.code || "";
-
-      // PostgREST tarda unos segundos en ver una tabla recién creada: en ese
-      // hueco devuelve el error sin mensaje.
       return {
-        message: detail
-          ? `No se pudo guardar: ${detail}`
-          : "No se pudo guardar y el servidor no devolvió detalle. Si acabas de crear la tabla presentations en Supabase, espera unos segundos y vuelve a intentar.",
+        message: describeError(error, "No se pudo guardar la presentación"),
       };
     }
 

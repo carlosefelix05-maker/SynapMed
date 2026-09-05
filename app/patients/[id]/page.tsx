@@ -16,6 +16,8 @@ import {
   LAB_FIELD_NAMES,
 } from "@/lib/labs-fields";
 import ClinicalResults from "@/app/components/ClinicalResults";
+import ActionError from "@/app/components/ActionError";
+import { describeError, withError } from "@/lib/action-error";
 import CopyButton from "@/app/components/CopyButton";
 import {
   ORDER_CATEGORIES,
@@ -47,7 +49,7 @@ export default async function PatientPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ subspecialty?: string }>;
+  searchParams?: Promise<{ subspecialty?: string; error?: string }>;
 }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -447,7 +449,9 @@ PLAN R++:
 
     if (error) {
       console.error("Error al guardar pendiente:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo guardar el pendiente"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -474,7 +478,9 @@ PLAN R++:
 
     if (error) {
       console.error("Error al actualizar pendiente:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo actualizar el pendiente"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -511,7 +517,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudo agregar la indicación:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo agregar la indicación"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -540,7 +548,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudieron suspender las indicaciones:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudieron suspender las indicaciones"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -564,7 +574,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudo reanudar la indicación:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo reanudar la indicación"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -586,7 +598,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudo borrar la indicación:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo borrar la indicación"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -609,7 +623,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudo borrar la presentación:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo borrar la presentación"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -633,7 +649,9 @@ PLAN R++:
 
     if (error) {
       console.error("No se pudo borrar el registro del ventilador:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo borrar el registro del ventilador"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -680,7 +698,9 @@ PLAN R++:
 
     if (error) {
       console.error("Error al guardar laboratorios:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudieron guardar los laboratorios"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -1073,7 +1093,9 @@ PLAN R++:
 
     if (error) {
       console.error("Error al eliminar pendiente:", error.message);
-      return;
+      redirect(
+        withError(`/patients/${id}`, describeError(error, "No se pudo eliminar el pendiente"))
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -1195,6 +1217,8 @@ PLAN R++:
             </form>
           </div>
         </div>
+
+        <ActionError message={query?.error} />
 
         <section className="rounded-3xl bg-white/10 p-8">
           <p className="text-slate-400">Cama {patient.bed}</p>

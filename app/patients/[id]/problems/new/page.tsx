@@ -3,13 +3,18 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { describeError, withError } from "@/lib/action-error";
+import ActionError from "@/app/components/ActionError";
 
 export default async function NewProblemPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
 
   const supabase = await createClient();
 
@@ -44,7 +49,13 @@ export default async function NewProblemPage({
 
     if (error) {
       console.error("Error al guardar problema:", error.message);
-      throw new Error(`No se pudo guardar el problema: ${error.message}`);
+
+      redirect(
+        withError(
+          `/patients/${id}/problems/new`,
+          describeError(error, "No se pudo guardar el problema")
+        )
+      );
     }
 
     revalidatePath(`/patients/${id}`);
@@ -70,6 +81,8 @@ export default async function NewProblemPage({
         <Link href={`/patients/${id}`} className="mb-8 inline-block text-sm text-cyan-300">
           ← Volver al expediente
         </Link>
+
+        <ActionError message={query?.error} />
 
         <section className="rounded-3xl bg-white/10 p-8">
           <div className="mb-8">

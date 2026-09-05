@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-
-export type PresentationFormState = { message: string };
+import ActionError from "@/app/components/ActionError";
+import { NO_ACTION_ERROR, type ActionState } from "@/lib/action-error";
 
 export default function PresentationEditor({
   patientId,
@@ -13,9 +13,9 @@ export default function PresentationEditor({
 }: {
   patientId: string;
   savePresentation: (
-    state: PresentationFormState,
+    state: ActionState,
     formData: FormData
-  ) => Promise<PresentationFormState>;
+  ) => Promise<ActionState>;
   defaultContent: string;
   defaultDate: string;
   cancelHref: string;
@@ -25,9 +25,10 @@ export default function PresentationEditor({
   const [error, setError] = useState<string | null>(null);
 
   // El texto vive en el estado del cliente: si el guardado falla, no se pierde.
-  const [saveState, formAction, isSaving] = useActionState(savePresentation, {
-    message: "",
-  });
+  const [saveState, formAction, isSaving] = useActionState(
+    savePresentation,
+    NO_ACTION_ERROR
+  );
 
   async function generatePresentation() {
     if (
@@ -110,14 +111,7 @@ export default function PresentationEditor({
         </p>
       </div>
 
-      {saveState.message ? (
-        <p
-          aria-live="polite"
-          className="rounded-2xl border border-red-400/30 bg-red-400/10 p-4 text-sm text-red-200"
-        >
-          {saveState.message}
-        </p>
-      ) : null}
+      <ActionError message={saveState.message} />
 
       <div className="flex flex-wrap gap-3 pt-2">
         <button

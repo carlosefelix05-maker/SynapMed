@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { derivedVentilation } from "@/lib/clinical";
 import ClinicalResults from "@/app/components/ClinicalResults";
+import ActionError from "@/app/components/ActionError";
+import { NO_ACTION_ERROR, type ActionState } from "@/lib/action-error";
 
 const MODOS = [
   "A/C volumen",
@@ -31,7 +33,10 @@ export default function VentilationForm({
   cancelHref,
   editHref,
 }: {
-  createVentilation: (formData: FormData) => Promise<void>;
+  createVentilation: (
+    state: ActionState,
+    formData: FormData
+  ) => Promise<ActionState>;
   sex: string | null;
   heightCm: number | null;
   cancelHref: string;
@@ -40,6 +45,11 @@ export default function VentilationForm({
   const [values, setValues] = useState<Record<string, string>>({
     modo: MODOS[0],
   });
+
+  const [saveState, formAction, isSaving] = useActionState(
+    createVentilation,
+    NO_ACTION_ERROR
+  );
 
   function update(name: string, value: string) {
     setValues((previous) => ({ ...previous, [name]: value }));
@@ -51,7 +61,7 @@ export default function VentilationForm({
   );
 
   return (
-    <form action={createVentilation} className="space-y-6">
+    <form action={formAction} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-slate-400">
@@ -139,12 +149,15 @@ export default function VentilationForm({
         </div>
       ) : null}
 
+      <ActionError message={saveState.message} />
+
       <div className="flex flex-wrap gap-3 pt-2">
         <button
           type="submit"
-          className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+          disabled={isSaving}
+          className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Guardar parámetros
+          {isSaving ? "Guardando..." : "Guardar parámetros"}
         </button>
 
         <a

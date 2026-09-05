@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import {
   derivedLabs,
   interpretGases,
   type PatientContext,
 } from "@/lib/clinical";
 import ClinicalResults from "@/app/components/ClinicalResults";
+import ActionError from "@/app/components/ActionError";
+import { NO_ACTION_ERROR, type ActionState } from "@/lib/action-error";
 import {
   QUIMICA,
   BIOMETRIA,
@@ -64,12 +66,19 @@ export default function LabsForm({
   cancelHref,
   defaultDate,
 }: {
-  createLabs: (formData: FormData) => Promise<void>;
+  createLabs: (state: ActionState, formData: FormData) => Promise<ActionState>;
   patient: PatientContext;
   cancelHref: string;
   defaultDate: string;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
+
+  // Lo capturado vive en el estado del cliente: si el guardado falla, los 53
+  // campos siguen ahí.
+  const [saveState, formAction, isSaving] = useActionState(
+    createLabs,
+    NO_ACTION_ERROR
+  );
 
   function update(name: string, value: string) {
     setValues((previous) => ({ ...previous, [name]: value }));
@@ -79,7 +88,7 @@ export default function LabsForm({
   const gases = useMemo(() => interpretGases(values, patient), [values, patient]);
 
   return (
-    <form action={createLabs} className="space-y-8">
+    <form action={formAction} className="space-y-8">
       <label className="block">
         <span className="mb-1 block text-xs font-semibold text-slate-400">
           Fecha de toma
@@ -208,12 +217,15 @@ export default function LabsForm({
         </div>
       ) : null}
 
+      <ActionError message={saveState.message} />
+
       <div className="flex flex-wrap gap-3 pt-2">
         <button
           type="submit"
-          className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300"
+          disabled={isSaving}
+          className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Guardar laboratorios
+          {isSaving ? "Guardando..." : "Guardar laboratorios"}
         </button>
 
         <a

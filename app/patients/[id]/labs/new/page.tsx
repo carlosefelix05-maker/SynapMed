@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { LAB_FIELD_NAMES } from "@/lib/labs-fields";
 import { roundsToday, dateToTimestamp } from "@/lib/date";
+import { describeError, type ActionState } from "@/lib/action-error";
 import LabsForm from "@/app/components/LabsForm";
 
 export default async function NewLabsPage({
@@ -22,7 +23,10 @@ export default async function NewLabsPage({
     .eq("team_id", CURRENT_TEAM_ID)
     .single();
 
-  async function createLabs(formData: FormData) {
+  async function createLabs(
+    _state: ActionState,
+    formData: FormData
+  ): Promise<ActionState> {
     "use server";
 
     const supabase = await createClient();
@@ -50,7 +54,10 @@ export default async function NewLabsPage({
         code: error.code,
         details: error.details,
       });
-      return;
+
+      return {
+        message: describeError(error, "No se pudieron guardar los laboratorios"),
+      };
     }
 
     revalidatePath(`/patients/${id}`);
