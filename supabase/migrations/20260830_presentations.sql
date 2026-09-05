@@ -45,9 +45,9 @@ create trigger presentations_set_updated_at
   for each row execute function public.set_updated_at();
 
 -- Seguridad a nivel de fila.
--- La app filtra por team_id en cada consulta; estas políticas dejan el acceso
--- a cualquier usuario autenticado, igual que el resto de las tablas del censo.
--- Si tus otras tablas restringen por membresía de equipo, replica esa condición aquí.
+-- OJO: estas políticas quedaron abiertas a cualquier usuario autenticado, a
+-- diferencia del resto del censo, que usa is_team_member(team_id). Se corrigen
+-- en 20260831_rls_por_equipo.sql.
 alter table public.presentations enable row level security;
 
 drop policy if exists presentations_select on public.presentations;
