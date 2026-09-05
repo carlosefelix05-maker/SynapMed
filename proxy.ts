@@ -35,6 +35,7 @@ export async function proxy(request: NextRequest) {
   // App de pase de visita: archivo estático en /public, con su propio inicio de sesión
   // contra Supabase. Se deja fuera del portal para poder abrirlo desde el iPad.
   const isPaseApp = pathname === "/pase.html" || pathname === "/pase";
+  const isNoAccessPage = pathname === "/sin-acceso";
 
   const localEmail = process.env.LOCAL_USER_EMAIL;
   const localPassword = process.env.LOCAL_USER_PASSWORD;
@@ -83,6 +84,26 @@ export async function proxy(request: NextRequest) {
     if (!user && !isLoginPage && !isRegisterPage && !isPaseApp) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = "/login";
+
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
+  // Tener cuenta no basta: hay que pertenecer a un equipo. Cualquiera puede
+  // registrarse, así que este es el candado que separa "tengo usuario" de
+  // "puedo ver el censo".
+  if (user && !isLoginPage && !isRegisterPage && !isPaseApp && !isNoAccessPage) {
+    const { data: membership } = await supabase
+      .from("team_members")
+      .select("team_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/sin-acceso";
+      redirectUrl.search = "";
 
       return NextResponse.redirect(redirectUrl);
     }
