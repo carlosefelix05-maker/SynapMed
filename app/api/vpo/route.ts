@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { clinicalPatient } from "@/lib/deidentify";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
 import { formatOrdersText, type MedicalOrder } from "@/lib/orders";
 import { getImageClinicalContext } from "@/lib/image-context";
@@ -112,7 +113,7 @@ REGLAS:
 - Toma en cuenta las INDICACIONES MÉDICAS ACTUALES, en especial anticoagulantes, antiagregantes, hipoglucemiantes y esteroides, por el riesgo perioperatorio.
 
 PACIENTE:
-${JSON.stringify(patient, null, 2)}
+${JSON.stringify(clinicalPatient(patient), null, 2)}
 
 SUBESPECIALIDAD:
 ${patient.subspecialty || "Medicina Interna"}

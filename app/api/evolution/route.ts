@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { clinicalPatient } from "@/lib/deidentify";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
 import { formatOrdersText, type MedicalOrder } from "@/lib/orders";
 import { getImageClinicalContext } from "@/lib/image-context";
@@ -159,7 +160,7 @@ REGLAS:
 - Integra las INDICACIONES MÉDICAS ACTUALES al análisis y al plan: el plan debe partir de lo que el paciente ya trae, ajustando, suspendiendo o agregando, no proponer de cero. Si algo se suspendió, considéralo en el análisis.
 
 PACIENTE:
-${JSON.stringify(patient, null, 2)}
+${JSON.stringify(clinicalPatient(patient), null, 2)}
 
 SUBESPECIALIDAD:
 ${patient.subspecialty || "Medicina Interna"}

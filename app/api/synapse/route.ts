@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { clinicalPatient } from "@/lib/deidentify";
 import { getImageClinicalContext } from "@/lib/image-context";
 
 export async function POST(request: Request) {
@@ -150,7 +151,7 @@ ESTILO DE ANÁLISIS:
 - Señalar pendientes diagnósticos y terapéuticos.
 
 PACIENTE:
-${JSON.stringify(patient, null, 2)}
+${JSON.stringify(clinicalPatient(patient), null, 2)}
 
 ÚLTIMOS LABORATORIOS:
 ${JSON.stringify(latestLabs, null, 2)}

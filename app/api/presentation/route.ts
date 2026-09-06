@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { clinicalPatient } from "@/lib/deidentify";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
 import { formatOrdersText, type MedicalOrder } from "@/lib/orders";
 import { getImageClinicalContext } from "@/lib/image-context";
@@ -182,7 +183,7 @@ ESTRUCTURA NARRATIVA:
 3. Cómo ha evolucionado durante la estancia y cómo se encuentra hoy.
 
 PACIENTE:
-${JSON.stringify(patient, null, 2)}
+${JSON.stringify(clinicalPatient(patient), null, 2)}
 
 SUBESPECIALIDAD:
 ${patient.subspecialty || "Medicina Interna"}
