@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CURRENT_TEAM_ID } from "@/lib/team";
-import { roundsToday, formatRoundsDate } from "@/lib/date";
+import { roundsToday, formatRoundsDate, roundsDayOf } from "@/lib/date";
 import { formatLabsText, formatGasesText } from "@/lib/labs-fields";
 import { censusAlerts, derivedVentilation } from "@/lib/clinical";
 import { ORDER_CATEGORIES, type MedicalOrder } from "@/lib/orders";
@@ -337,6 +337,14 @@ export default async function VisitaPage({
 
           {labsLine ? (
             <>
+              {roundsDayOf(labs?.sampled_at ?? labs?.created_at) !== roundsToday() ? (
+                <p className="mb-2 inline-block rounded-full bg-amber-400/15 px-3 py-1 text-sm font-semibold text-amber-200">
+                  No son de hoy · del {formatRoundsDate(
+                    roundsDayOf(labs?.sampled_at ?? labs?.created_at)
+                  )}
+                </p>
+              ) : null}
+
               <p className="text-base leading-7 text-slate-200">{labsLine}</p>
               {gasesLine ? (
                 <p className="mt-2 text-base leading-7 text-slate-200">{gasesLine}</p>

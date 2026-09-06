@@ -34,3 +34,14 @@ export function dateToTimestamp(value: string): string | null {
 
   return new Date(`${value}T12:00:00`).toISOString();
 }
+
+// A qué día del pase pertenece una marca de tiempo. Se resuelve en horario de
+// la Ciudad de México: comparar el texto ISO directamente fallaría de noche,
+// cuando en UTC ya es el día siguiente.
+export function roundsDayOf(value: string | null | undefined): string {
+  if (!value) return "";
+
+  return new Date(value).toLocaleDateString("en-CA", {
+    timeZone: ROUNDS_TIME_ZONE,
+  });
+}

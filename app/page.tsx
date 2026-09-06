@@ -3,6 +3,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CURRENT_TEAM_ID } from "@/lib/team";
 import { censusAlerts } from "@/lib/clinical";
+import { roundsToday, roundsDayOf } from "@/lib/date";
 import LogoutButton from "@/app/components/LogoutButton";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +35,7 @@ type Lab = {
   pcr: string | null;
   otros: string | null;
   created_at: string;
+  sampled_at: string | null;
 };
 
 type Attending = {
@@ -207,6 +209,18 @@ const list =
     }
   }
 
+  // Los laboratorios se piden a diario: no basta con que el paciente tenga
+  // labs, tienen que ser los de hoy.
+  const roundsDate = roundsToday();
+
+  const patientsWithLabsToday = new Set(
+    labsList
+      .filter(
+        (lab) => roundsDayOf(lab.sampled_at ?? lab.created_at) === roundsDate
+      )
+      .map((lab) => lab.patient_id)
+  );
+
   const today = new Date();
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const tomorrowStart = new Date(todayStart);
@@ -359,7 +373,9 @@ const list =
   const criticalCount = currentPassSummaries.filter((item) => item.priority === "Crítico").length;
   const highPriorityCount = currentPassSummaries.filter((item) => item.priority === "Alta").length;
   const stableCount = currentPassSummaries.filter((item) => item.priority === "Estable").length;
-  const noLabsCount = currentPassSummaries.filter((item) => !item.lab).length;
+  const noLabsTodayCount = currentPassSummaries.filter(
+    (item) => !patientsWithLabsToday.has(item.patient.id)
+  ).length;
   const criticalPendingCount = criticalCount;
   const noNoteTodayCount = currentPassSummaries.filter((item) => !patientsWithNoteToday.has(item.patient.id)).length;
   const completedRoundsCount = currentPassSummaries.filter((item) => patientsWithRoundCompletedToday.has(item.patient.id)).length;
@@ -953,7 +969,7 @@ const list =
               <h4 className="mb-3 font-semibold text-cyan-300">📋 Pendientes del servicio</h4>
 
               <div className="space-y-2 text-sm text-slate-300">
-                <p>• {noLabsCount} paciente(s) sin laboratorios capturados</p>
+                <p>• {noLabsTodayCount} paciente(s) sin laboratorios de hoy</p>
                 <p>• {criticalPendingCount} paciente(s) en estado crítico</p>
                 <p>• {noNoteTodayCount} paciente(s) sin evolución registrada hoy</p>
                 <p>• {pendingRoundsCount} paciente(s) pendientes de pase</p>
@@ -1026,10 +1042,18 @@ const list =
                               { age: patient.age, sex: patient.sex }
                             );
 
-                            if (!alerts.length) return null;
+                            const sinLabsHoy = !patientsWithLabsToday.has(patient.id);
+
+                            if (!alerts.length && !sinLabsHoy) return null;
 
                             return (
                               <span className="mt-1 flex flex-wrap gap-1">
+                                {sinLabsHoy ? (
+                                  <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                                    Labs de hoy pendientes
+                                  </span>
+                                ) : null}
+
                                 {alerts.map((alert) => (
                                   <span
                                     key={alert.label}
