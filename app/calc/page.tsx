@@ -960,6 +960,262 @@ function QuickScores() {
   );
 }
 
+
+function UrineOutputKdigoCalculator() {
+  const [weight, setWeight] = useState("70");
+  const [urine, setUrine] = useState("400");
+  const [hours, setHours] = useState("12");
+
+  const result = useMemo(() => {
+    const kg = toNumber(weight);
+    const ml = toNumber(urine);
+    const h = toNumber(hours);
+
+    const rate = kg > 0 && h > 0 ? ml / kg / h : 0;
+
+    // Mínimo que debería haber orinado en el periodo para no cumplir criterio.
+    const expected = kg * 0.5 * h;
+
+    let stage = "Sin criterio de LRA por diuresis";
+    let detail = "Gasto urinario por arriba de 0.5 ml/kg/h.";
+
+    if (kg > 0 && h > 0) {
+      if (ml === 0 && h >= 12) {
+        stage = "Estadio 3";
+        detail = "Anuria durante 12 h o más.";
+      } else if (rate < 0.3 && h >= 24) {
+        stage = "Estadio 3";
+        detail = "Menos de 0.3 ml/kg/h durante 24 h o más.";
+      } else if (rate < 0.5 && h >= 12) {
+        stage = "Estadio 2";
+        detail = "Menos de 0.5 ml/kg/h durante 12 h o más.";
+      } else if (rate < 0.5 && h >= 6) {
+        stage = "Estadio 1";
+        detail = "Menos de 0.5 ml/kg/h durante 6 a 12 h.";
+      } else if (rate < 0.5) {
+        stage = "Aún no cumple ventana";
+        detail = `Va en ${round(rate, 2)} ml/kg/h, pero el criterio pide al menos 6 h; llevas ${round(h, 0)}.`;
+      }
+    }
+
+    return { rate, expected, stage, detail };
+  }, [weight, urine, hours]);
+
+  const alerta = result.stage.startsWith("Estadio");
+
+  return (
+    <section id="diuresis" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <SectionHeader
+        title="Diuresis y KDIGO"
+        description="La otra mitad de la definición de lesión renal aguda: el gasto urinario, no la creatinina."
+      />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Field label="Peso" value={weight} onChange={setWeight} suffix="kg" />
+        <Field label="Diuresis del periodo" value={urine} onChange={setUrine} suffix="ml" />
+        <Field label="Horas del periodo" value={hours} onChange={setHours} suffix="h" />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3">
+        <ResultCard
+          title="Gasto urinario"
+          value={`${round(result.rate, 2)} ml/kg/h`}
+          helper="Meta habitual: por arriba de 0.5"
+        />
+        <ResultCard
+          title="Mínimo esperado"
+          value={`${round(result.expected, 0)} ml`}
+          helper={`Lo que debería haber orinado en ${round(toNumber(hours), 0)} h para llegar a 0.5 ml/kg/h`}
+        />
+        <ResultCard title="KDIGO por diuresis" value={result.stage} helper={result.detail} />
+      </div>
+
+      <div
+        className={`mt-5 rounded-2xl border p-4 text-sm leading-6 ${
+          alerta
+            ? "border-amber-300/30 bg-amber-400/10 text-amber-100"
+            : "border-white/10 bg-[#061527] text-slate-300"
+        }`}
+      >
+        El estadio se toma del criterio más grave entre diuresis y creatinina: si por
+        creatinina sale un estadio mayor, ése manda. Antes de darlo por oligúrico,
+        descarta globo vesical o sonda obstruida.
+      </div>
+    </section>
+  );
+}
+
+function DkaHhsCalculator() {
+  const [glucose, setGlucose] = useState("450");
+  const [sodium, setSodium] = useState("132");
+  const [chloride, setChloride] = useState("98");
+  const [bicarbonate, setBicarbonate] = useState("12");
+  const [ph, setPh] = useState("7.15");
+  const [potassium, setPotassium] = useState("4.2");
+  const [weight, setWeight] = useState("70");
+
+  const result = useMemo(() => {
+    const glu = toNumber(glucose);
+    const na = toNumber(sodium);
+    const cl = toNumber(chloride);
+    const hco3 = toNumber(bicarbonate);
+    const phValue = toNumber(ph);
+    const k = toNumber(potassium);
+    const kg = toNumber(weight);
+
+    const anionGap = na - (cl + hco3);
+    const correctedNa = glu > 100 ? na + (1.6 * (glu - 100)) / 100 : na;
+
+    // Osmolaridad efectiva: sin BUN, porque la urea cruza la membrana y no
+    // arrastra agua.
+    const effectiveOsm = 2 * na + glu / 18;
+
+    // Déficit de agua libre, con el sodio corregido.
+    const waterDeficit = kg > 0 ? 0.6 * kg * (correctedNa / 140 - 1) : 0;
+
+    let diagnosis = "No cumple criterios de CAD ni de EHH";
+    let severity = "";
+
+    const ketoacidosis = glu > 250 && hco3 < 18 && phValue < 7.3 && anionGap > 10;
+
+    if (ketoacidosis) {
+      if (phValue < 7 || hco3 < 10) {
+        diagnosis = "Cetoacidosis diabética";
+        severity = "Grave";
+      } else if (phValue < 7.25 || hco3 < 15) {
+        diagnosis = "Cetoacidosis diabética";
+        severity = "Moderada";
+      } else {
+        diagnosis = "Cetoacidosis diabética";
+        severity = "Leve";
+      }
+    } else if (glu > 600 && effectiveOsm > 320 && phValue > 7.3 && hco3 > 18) {
+      diagnosis = "Estado hiperosmolar hiperglucémico";
+      severity = "";
+    }
+
+    let potassiumPlan = "";
+
+    if (k < 3.3) {
+      potassiumPlan =
+        "No inicies insulina. Repón potasio primero: la insulina lo mete a la célula y puede provocar arritmia.";
+    } else if (k <= 5.2) {
+      potassiumPlan =
+        "Agrega 20 a 30 mEq de potasio por litro de solución para mantenerlo entre 4 y 5.";
+    } else {
+      potassiumPlan = "No repongas potasio todavía; revalora en 2 h.";
+    }
+
+    const resolutionCriteria = [
+      glu < 200,
+      hco3 >= 15,
+      phValue > 7.3,
+      anionGap <= 12,
+    ];
+
+    const resolved =
+      resolutionCriteria[0] &&
+      resolutionCriteria.slice(1).filter(Boolean).length >= 2;
+
+    return {
+      anionGap,
+      correctedNa,
+      effectiveOsm,
+      waterDeficit,
+      diagnosis,
+      severity,
+      potassiumPlan,
+      resolved,
+    };
+  }, [glucose, sodium, chloride, bicarbonate, ph, potassium, weight]);
+
+  const hayCrisis = result.diagnosis !== "No cumple criterios de CAD ni de EHH";
+
+  return (
+    <section id="cad-ehh" className="scroll-mt-28 rounded-3xl border border-white/10 bg-white/10 p-6 shadow-2xl">
+      <SectionHeader
+        title="CAD y estado hiperosmolar"
+        description="Clasificación, brecha aniónica, osmolaridad efectiva, conducta con el potasio y criterios de resolución."
+      />
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Field label="Glucosa" value={glucose} onChange={setGlucose} suffix="mg/dl" />
+        <Field label="Na" value={sodium} onChange={setSodium} suffix="mEq/l" />
+        <Field label="Cl" value={chloride} onChange={setChloride} suffix="mEq/l" />
+        <Field label="HCO₃" value={bicarbonate} onChange={setBicarbonate} suffix="mEq/l" />
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <Field label="pH" value={ph} onChange={setPh} />
+        <Field label="K" value={potassium} onChange={setPotassium} suffix="mEq/l" />
+        <Field label="Peso" value={weight} onChange={setWeight} suffix="kg" />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <ResultCard title="Anion gap" value={`${round(result.anionGap, 1)}`} helper="Na − (Cl + HCO₃)" />
+        <ResultCard title="Na corregido" value={`${round(result.correctedNa, 1)}`} helper="Corregido por glucosa" />
+        <ResultCard
+          title="Osm efectiva"
+          value={`${round(result.effectiveOsm, 1)}`}
+          helper="2·Na + Glu/18, sin urea"
+        />
+        <ResultCard
+          title="Déficit de agua"
+          value={`${round(Math.max(result.waterDeficit, 0), 1)} l`}
+          helper="Con el sodio corregido, para reposición en EHH"
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <div
+          className={`rounded-2xl border p-4 ${
+            hayCrisis
+              ? "border-amber-300/30 bg-amber-400/10"
+              : "border-white/10 bg-[#061527]"
+          }`}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            Cuadro
+          </p>
+          <p className="mt-2 text-2xl font-bold text-white">
+            {result.diagnosis}
+            {result.severity ? ` · ${result.severity}` : ""}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            {result.severity
+              ? "La severidad se toma del pH y del bicarbonato; el estado mental también cuenta y ése lo valoras tú."
+              : result.diagnosis.startsWith("Estado")
+                ? "En el hiperosmolar la prioridad es el déficit de agua y el potasio, no la insulina en bolo."
+                : "Con estos valores no se cumplen los criterios; revalora con la evolución y las cetonas."}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-[#061527] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            Potasio antes de la insulina
+          </p>
+          <p className="mt-2 text-base leading-7 text-slate-200">
+            {result.potassiumPlan}
+          </p>
+        </div>
+      </div>
+
+      <div
+        className={`mt-5 rounded-2xl border p-4 text-sm leading-6 ${
+          result.resolved
+            ? "border-green-300/30 bg-green-400/10 text-green-100"
+            : "border-white/10 bg-[#061527] text-slate-300"
+        }`}
+      >
+        <span className="font-semibold">Resolución de la CAD: </span>
+        {result.resolved
+          ? "Con estos valores ya cumple: glucosa por debajo de 200 más dos de los tres criterios (HCO₃ ≥15, pH >7.30, AG ≤12). Puedes pasar a insulina subcutánea con traslape."
+          : "Todavía no cumple. Se requiere glucosa por debajo de 200 más dos de estos tres: HCO₃ ≥15, pH >7.30, AG ≤12."}
+      </div>
+    </section>
+  );
+}
+
 export default function CalcPage() {
   const calculatorSections = [
     ["Favoritos", "#favoritos"],
@@ -967,12 +1223,14 @@ export default function CalcPage() {
     ["Electrolitos", "#electrolitos"],
     ["Reposición", "#reposicion"],
     ["Renal/ACO", "#renal"],
+    ["Diuresis", "#diuresis"],
     ["VMI", "#vmi"],
     ["Escalas", "#escalas"],
     ["Urgencias", "#urgencias"],
     ["UCI", "#uci-scores"],
     ["Cardiología", "#cardio-scores"],
     ["Gastro", "#gastro-scores"],
+    ["CAD/EHH", "#cad-ehh"],
   ];
   const [calculatorSearch, setCalculatorSearch] = useState("");
   const normalizedSearch = calculatorSearch.trim().toLowerCase();
@@ -998,6 +1256,8 @@ export default function CalcPage() {
     showCalculator("uci news2 sofa psi apache sepsis neumonia cuidados intensivos"),
     showCalculator("cardiologia killip shock index rcri lee chads timi grace prevent riesgo cardiovascular"),
     showCalculator("gastro meld meld na child pugh cirrosis hepatopatia sangrado hepatico"),
+    showCalculator("diuresis gasto urinario kdigo lra lesion renal aguda oliguria anuria ml kg h"),
+    showCalculator("cad ehh cetoacidosis diabetica estado hiperosmolar hiperglucemia anion gap osmolaridad efectiva potasio insulina resolucion"),
   ].some(Boolean);
   return (
     <main className="min-h-screen bg-[#071A2F] p-6 text-white md:p-10">
@@ -1106,6 +1366,8 @@ export default function CalcPage() {
                   ["NEWS2 / SOFA", "#uci-scores"],
                   ["TIMI / GRACE / PREVENT", "#cardio-scores"],
                   ["MELD-Na / Child-Pugh", "#gastro-scores"],
+                  ["Diuresis / KDIGO", "#diuresis"],
+                  ["CAD / EHH", "#cad-ehh"],
                 ].map(([label, href]) => (
                   <a
                     key={href}
@@ -1128,6 +1390,8 @@ export default function CalcPage() {
             {showCalculator("uci news2 sofa psi apache sepsis neumonia cuidados intensivos") ? <IcuScoresCalculator /> : null}
             {showCalculator("cardiologia killip shock index rcri lee chads timi grace prevent riesgo cardiovascular") ? <CardiologyScoresCalculator /> : null}
             {showCalculator("gastro meld meld na child pugh cirrosis hepatopatia sangrado hepatico") ? <GastroScoresCalculator /> : null}
+            {showCalculator("diuresis gasto urinario kdigo lra lesion renal aguda oliguria anuria ml kg h") ? <UrineOutputKdigoCalculator /> : null}
+            {showCalculator("cad ehh cetoacidosis diabetica estado hiperosmolar hiperglucemia anion gap osmolaridad efectiva potasio insulina resolucion") ? <DkaHhsCalculator /> : null}
           </div>
         </div>
       </div>
