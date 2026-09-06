@@ -569,3 +569,89 @@ export function derivedVentilation(input: {
 
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Alertas para el censo
+// ---------------------------------------------------------------------------
+// Versión corta y priorizada de lo anterior: en la portada no cabe el panel
+// completo, lo que importa es a quién hay que ver primero.
+
+export type CensusAlert = {
+  label: string;
+  severity: "alta" | "media";
+};
+
+export function censusAlerts(
+  lab: Record<string, unknown> | null | undefined,
+  patient: PatientContext = {}
+): CensusAlert[] {
+  if (!lab) return [];
+
+  const alerts: CensusAlert[] = [];
+
+  const add = (
+    value: number | null,
+    label: string,
+    alta: (v: number) => boolean,
+    media: (v: number) => boolean
+  ) => {
+    if (value === null) return;
+    if (alta(value)) alerts.push({ label, severity: "alta" });
+    else if (media(value)) alerts.push({ label, severity: "media" });
+  };
+
+  const k = toNum(lab.k);
+  add(k, `K ${k}`, (v) => v > 6 || v < 3, (v) => v > 5.5 || v < 3.5);
+
+  const na = toNum(lab.na);
+  add(na, `Na ${na}`, (v) => v < 125 || v > 155, (v) => v < 130 || v > 150);
+
+  const glu = toNum(lab.glu);
+  add(glu, `Glu ${glu}`, (v) => v > 300 || v < 60, (v) => v > 250 || v < 70);
+
+  const hb = toNum(lab.hb);
+  add(hb, `Hb ${hb}`, (v) => v < 7, (v) => v < 8);
+
+  const plt = toNum(lab.plt);
+  add(plt, `Plaq ${plt}`, (v) => v < 30, (v) => v < 50);
+
+  const lactato = toNum(lab.lactato);
+  add(lactato, `Lactato ${lactato}`, (v) => v > 4, (v) => v > 2);
+
+  const ph = toNum(lab.ph);
+  add(ph, `pH ${ph}`, (v) => v < 7.25 || v > 7.55, (v) => v < 7.3 || v > 7.5);
+
+  // Función renal: se avisa por TFG, no por creatinina cruda, porque la misma
+  // creatinina significa cosas distintas según edad y sexo.
+  const cr = toNum(lab.cr);
+  const age = toNum(patient.age);
+
+  if (cr !== null && cr > 0 && age !== null && age > 0 && patient.sex) {
+    const female = String(patient.sex).toUpperCase().startsWith("F");
+    const kappa = female ? 0.7 : 0.9;
+    const alpha = female ? -0.241 : -0.302;
+
+    const egfr =
+      142 *
+      Math.min(cr / kappa, 1) ** alpha *
+      Math.max(cr / kappa, 1) ** -1.2 *
+      0.9938 ** age *
+      (female ? 1.012 : 1);
+
+    add(egfr, `TFG ${round(egfr, 0)}`, (v) => v < 15, (v) => v < 30);
+  }
+
+  const po2 = toNum(lab.po2);
+  const fio2raw = toNum(lab.fio2);
+  const fio2 = fio2raw === null || fio2raw <= 0 ? null : fio2raw > 1 ? fio2raw / 100 : fio2raw;
+
+  if (po2 !== null && fio2 !== null) {
+    const pf = po2 / fio2;
+    add(pf, `P/F ${round(pf, 0)}`, (v) => v <= 100, (v) => v <= 200);
+  }
+
+  // Lo grave primero: en el pase se lee de izquierda a derecha y se corta.
+  return alerts.sort((a, b) =>
+    a.severity === b.severity ? 0 : a.severity === "alta" ? -1 : 1
+  );
+}

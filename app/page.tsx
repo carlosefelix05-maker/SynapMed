@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { CURRENT_TEAM_ID } from "@/lib/team";
+import { censusAlerts } from "@/lib/clinical";
 import LogoutButton from "@/app/components/LogoutButton";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -491,6 +492,28 @@ const list =
     }
   }
 
+  // Alertas calculadas de los laboratorios: independientes de la prioridad que
+  // se haya puesto a mano, que puede estar desactualizada.
+  const labAlertRows = currentPassSummaries
+    .map((item) => ({
+      bed: item.patient.bed,
+      name: item.patient.full_name,
+      id: item.patient.id,
+      alerts: censusAlerts(latestLabsByPatient.get(item.patient.id), {
+        age: item.patient.age,
+        sex: item.patient.sex,
+      }),
+    }))
+    .filter((row) => row.alerts.some((alert) => alert.severity === "alta"))
+    .sort((a, b) => {
+      const bedA = Number(a.bed);
+      const bedB = Number(b.bed);
+
+      if (!Number.isNaN(bedA) && !Number.isNaN(bedB)) return bedA - bedB;
+
+      return String(a.bed || "").localeCompare(String(b.bed || ""));
+    });
+
   const criticalAlerts = Array.from(criticalAlertsMap.values()).filter((alert) => {
     if (selectedSubspecialty === "Todas") return true;
 
@@ -871,9 +894,51 @@ const list =
             </div>
 
             <div className="mt-5 rounded-2xl bg-[#071A2F] p-4">
-              <h4 className="mb-3 font-semibold text-cyan-300">Alertas críticas</h4>
+              <h4 className="mb-3 font-semibold text-cyan-300">
+                Alertas de laboratorio
+              </h4>
 
-              {criticalAlerts.length > 0 ? (
+              {labAlertRows.length > 0 ? (
+                <div className="space-y-2">
+                  {labAlertRows.map((row) => (
+                    <a
+                      key={row.id}
+                      href={`/patients/${row.id}${subspecialtyQuery}`}
+                      className="flex flex-wrap items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-sm hover:bg-white/10"
+                    >
+                      <span className="font-semibold text-white">
+                        Cama {row.bed}
+                      </span>
+                      <span className="text-slate-300">{row.name}</span>
+
+                      {row.alerts.map((alert) => (
+                        <span
+                          key={alert.label}
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            alert.severity === "alta"
+                              ? "bg-red-400/20 text-red-200"
+                              : "bg-amber-400/20 text-amber-200"
+                          }`}
+                        >
+                          {alert.label}
+                        </span>
+                      ))}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Sin valores de alarma en los últimos laboratorios.
+                </p>
+              )}
+            </div>
+
+            {criticalAlerts.length > 0 ? (
+              <div className="mt-5 rounded-2xl bg-[#071A2F] p-4">
+                <h4 className="mb-3 font-semibold text-cyan-300">
+                  Marcados como críticos
+                </h4>
+
                 <div className="space-y-2 text-sm text-red-300">
                   {criticalAlerts.map((alert, index) => (
                     <p key={`${alert.bed}-${alert.name}-${alert.labs}-${index}`}>
@@ -881,10 +946,8 @@ const list =
                     </p>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-400">Sin alertas críticas al momento.</p>
-              )}
-            </div>
+              </div>
+            ) : null}
 
             <div className="mt-5 rounded-2xl bg-[#071A2F] p-4">
               <h4 className="mb-3 font-semibold text-cyan-300">📋 Pendientes del servicio</h4>
@@ -953,7 +1016,35 @@ const list =
                         </span>
                         <span>{visualPriority(latestLabsByPatient.get(patient.id), patient.priority)}</span>
                         <span className={labAlertClass(latestLabsByPatient.get(patient.id))}>
-                          {formatLabs(latestLabsByPatient.get(patient.id))}
+                          <span className="block">
+                            {formatLabs(latestLabsByPatient.get(patient.id))}
+                          </span>
+
+                          {(() => {
+                            const alerts = censusAlerts(
+                              latestLabsByPatient.get(patient.id),
+                              { age: patient.age, sex: patient.sex }
+                            );
+
+                            if (!alerts.length) return null;
+
+                            return (
+                              <span className="mt-1 flex flex-wrap gap-1">
+                                {alerts.map((alert) => (
+                                  <span
+                                    key={alert.label}
+                                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                      alert.severity === "alta"
+                                        ? "bg-red-400/20 text-red-200"
+                                        : "bg-amber-400/20 text-amber-200"
+                                    }`}
+                                  >
+                                    {alert.label}
+                                  </span>
+                                ))}
+                              </span>
+                            );
+                          })()}
                         </span>
                         <span>
                           {patientsWithRoundCompletedToday.has(patient.id) ? (
