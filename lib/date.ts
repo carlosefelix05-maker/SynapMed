@@ -1,8 +1,8 @@
-// La fecha del pase se calcula siempre en horario de la Ciudad de México.
+// La fecha del pase se calcula siempre en horario de Mazatlán (Sinaloa, UTC-7).
 // En producción el servidor corre en UTC, y de madrugada eso adelantaría el día
 // del pase: una presentación escrita a las 11 de la noche caería en la fecha
 // siguiente.
-export const ROUNDS_TIME_ZONE = "America/Mexico_City";
+export const ROUNDS_TIME_ZONE = "America/Mazatlan";
 
 // Devuelve la fecha de hoy como "YYYY-MM-DD" (el formato que guarda Postgres).
 export function roundsToday(): string {
@@ -36,7 +36,7 @@ export function dateToTimestamp(value: string): string | null {
 }
 
 // A qué día del pase pertenece una marca de tiempo. Se resuelve en horario de
-// la Ciudad de México: comparar el texto ISO directamente fallaría de noche,
+// Mazatlán: comparar el texto ISO directamente fallaría de tarde-noche,
 // cuando en UTC ya es el día siguiente.
 export function roundsDayOf(value: string | null | undefined): string {
   if (!value) return "";
