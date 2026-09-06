@@ -786,7 +786,7 @@ const list =
 
               <div className="flex flex-wrap gap-3">
                 <a
-                  href={nextPatientForRounds ? `/patients/${nextPatientForRounds}${subspecialtyQuery}` : "#"}
+                  href={nextPatientForRounds ? `/visita/${nextPatientForRounds}${subspecialtyQuery}` : "#"}
                   className="rounded-xl bg-cyan-400 px-6 py-3 font-semibold text-slate-950"
                 >
                   Iniciar Pase
