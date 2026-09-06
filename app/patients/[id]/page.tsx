@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import SynapseProButton from "@/app/components/SynapseProButton";
 import EvolutionGeneratorButton from "@/app/components/EvolutionGeneratorButton";
-import VpoGeneratorButton from "@/app/components/VpoGeneratorButton";
 import ConfirmSubmitButton from "@/app/components/ConfirmSubmitButton";
 import { roundsToday, formatRoundsDate, dateToTimestamp } from "@/lib/date";
 import { derivedLabs, interpretGases, derivedVentilation } from "@/lib/clinical";
@@ -1817,8 +1816,6 @@ PLAN R++:
               </span>
 
               <EvolutionGeneratorButton patientId={id} />
-
-              <VpoGeneratorButton patientId={id} />
 
               <SynapseProButton
                 patientId={id}
